@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Fishing Game</title>
+    <title>Fishing Shooter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
@@ -13,7 +13,7 @@
             margin: 0;
             padding: 10px;
             min-height: 100vh;
-            touch-action: none; /* Prevents default touch behaviors */
+            touch-action: none;
         }
 
         #gameContainer {
@@ -64,12 +64,11 @@
             border: none;
             border-radius: 10px;
             touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
         }
 
-        .control-btn:active {
-            background-color: #004d80;
+        #shootBtn {
+            grid-column: 2;
+            background-color: #cc0000;
         }
 
         #resetBtn {
@@ -78,183 +77,138 @@
         }
 
         @media (max-width: 600px) {
-            body {
-                padding: 5px;
-            }
-
-            #score {
-                font-size: 1.2rem;
-            }
-
             .control-btn {
                 padding: 12px;
                 font-size: 1rem;
             }
         }
-
-        /* Hide controls on desktop */
-        @media (min-width: 1024px) {
-            #controls {
-                display: none;
-            }
-        }
     </style>
 </head>
 <body>
-    <div id="score">Catch Value: 0</div>
-    <div id="gameOver">Game Over! Your line got tangled. Press Reset to fish again!</div>
+    <div id="score">Score: 0</div>
+    <div id="gameOver">Game Over! Fish got away!</div>
     
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        <canvas id="gameCanvas" width="800" height="800"></canvas>
     </div>
 
     <div id="controls">
-        <button class="control-btn" id="upBtn">↑</button>
-        <button class="control-btn" id="downBtn">↓</button>
         <button class="control-btn" id="leftBtn">←</button>
+        <button class="control-btn" id="shootBtn">🎣</button>
         <button class="control-btn" id="rightBtn">→</button>
-        <button class="control-btn" id="resetBtn">Cast New Line</button>
+        <button class="control-btn" id="resetBtn">New Game</button>
     </div>
 
     <script>
-        const GRID_SIZE = 20;
-        const GRID_WIDTH = 30;
-        const GRID_HEIGHT = 20;
-        let gameInterval;
-
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        let gameInterval;
 
-        // Resize canvas to maintain aspect ratio
+        // Fish colors and images
+        const FISH_COLORS = {
+            'bluegill': '#4169E1',
+            'bass': '#006400',
+            'pike': '#8B4513',
+            'muskie': '#DC143C'
+        };
+
         function resizeCanvas() {
             const container = document.getElementById('gameContainer');
             const containerWidth = container.clientWidth;
             canvas.style.width = containerWidth + 'px';
-            canvas.style.height = (containerWidth * (GRID_HEIGHT / GRID_WIDTH)) + 'px';
+            canvas.style.height = containerWidth + 'px';
         }
 
-        // Initial resize and add resize listener
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        // Touch controls
-        function setupControls() {
-            const controls = {
-                'upBtn': 'UP',
-                'downBtn': 'DOWN',
-                'leftBtn': 'LEFT',
-                'rightBtn': 'RIGHT'
-            };
-
-            for (const [btnId, direction] of Object.entries(controls)) {
-                const btn = document.getElementById(btnId);
-                
-                // Handle both touch and click events
-                ['touchstart', 'mousedown'].forEach(eventType => {
-                    btn.addEventListener(eventType, (e) => {
-                        e.preventDefault();
-                        moveDirection(direction);
-                    });
-                });
-            }
-
-            document.getElementById('resetBtn').addEventListener('click', resetGame);
+        function drawBoat(x, y) {
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(x * 20, y * 20);
+            ctx.lineTo((x + 2) * 20, y * 20);
+            ctx.lineTo((x + 1.5) * 20, (y + 1) * 20);
+            ctx.lineTo((x + 0.5) * 20, (y + 1) * 20);
+            ctx.closePath();
+            ctx.fill();
         }
 
-        function moveDirection(direction) {
-            fetch('/move', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ direction: direction }),
-            })
-            .then(response => response.json())
-            .then(updateGame);
+        function drawFish(fish) {
+            ctx.fillStyle = FISH_COLORS[fish.type];
+            ctx.beginPath();
+            ctx.moveTo(fish.x * 20, fish.y * 20);
+            ctx.lineTo((fish.x + 1.5) * 20, (fish.y + 0.5) * 20);
+            ctx.lineTo(fish.x * 20, (fish.y + 1) * 20);
+            ctx.closePath();
+            ctx.fill();
         }
 
-        // Keyboard controls
-        document.addEventListener('keydown', handleKeyPress);
-
-        function handleKeyPress(event) {
-            const keyMap = {
-                'ArrowUp': 'UP',
-                'ArrowDown': 'DOWN',
-                'ArrowLeft': 'LEFT',
-                'ArrowRight': 'RIGHT'
-            };
-            
-            if (keyMap[event.key]) {
-                event.preventDefault();
-                moveDirection(keyMap[event.key]);
-            }
+        function drawLure(lure) {
+            ctx.fillStyle = '#FF0000';
+            ctx.beginPath();
+            ctx.arc(lure.x * 20 + 10, lure.y * 20 + 10, 5, 0, Math.PI * 2);
+            ctx.fill();
         }
 
         function drawGame(gameState) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Calculate scale factors
-            const scaleX = canvas.width / (GRID_WIDTH * GRID_SIZE);
-            const scaleY = canvas.height / (GRID_HEIGHT * GRID_SIZE);
+            // Draw water background
+            ctx.fillStyle = '#00a6ed';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw fishing line
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2 * Math.min(scaleX, scaleY);
-            let prevPoint = null;
-            gameState.fishing_line.forEach(([x, y]) => {
-                const currentPoint = {
-                    x: x * GRID_SIZE + GRID_SIZE/2,
-                    y: y * GRID_SIZE + GRID_SIZE/2
-                };
-                
-                if (prevPoint) {
-                    ctx.beginPath();
-                    ctx.moveTo(prevPoint.x, prevPoint.y);
-                    ctx.lineTo(currentPoint.x, currentPoint.y);
-                    ctx.stroke();
-                }
-                prevPoint = currentPoint;
-            });
+            // Draw player's boat
+            drawBoat(gameState.player.x, gameState.player.y);
 
-            // Draw hook
-            const [headX, headY] = gameState.fishing_line[0];
-            ctx.fillStyle = '#silver';
-            ctx.beginPath();
-            ctx.arc(
-                headX * GRID_SIZE + GRID_SIZE/2,
-                headY * GRID_SIZE + GRID_SIZE/2,
-                GRID_SIZE/3,
-                0,
-                Math.PI * 2
-            );
-            ctx.fill();
+            // Draw lures
+            gameState.player.lures.forEach(drawLure);
 
             // Draw fish
-            const fishColors = {
-                'normal': '#ffcc00',
-                'rare': '#ff6600',
-                'special': '#ff0000'
-            };
-            
-            ctx.fillStyle = fishColors[gameState.fish_type];
-            const [fishX, fishY] = gameState.fish;
-            
-            ctx.beginPath();
-            ctx.moveTo(fishX * GRID_SIZE, fishY * GRID_SIZE + GRID_SIZE/2);
-            ctx.lineTo(fishX * GRID_SIZE + GRID_SIZE, fishY * GRID_SIZE);
-            ctx.lineTo(fishX * GRID_SIZE + GRID_SIZE, fishY * GRID_SIZE + GRID_SIZE);
-            ctx.closePath();
-            ctx.fill();
+            gameState.fish.forEach(drawFish);
         }
 
         function updateGame(gameState) {
             drawGame(gameState);
-            document.getElementById('score').textContent = `Catch Value: ${gameState.score}`;
+            document.getElementById('score').textContent = `Score: ${gameState.score}`;
             
             if (gameState.game_over) {
                 document.getElementById('gameOver').style.display = 'block';
                 clearInterval(gameInterval);
             }
+        }
+
+        function setupControls() {
+            document.getElementById('leftBtn').addEventListener('mousedown', () => move('LEFT'));
+            document.getElementById('rightBtn').addEventListener('mousedown', () => move('RIGHT'));
+            document.getElementById('shootBtn').addEventListener('click', shoot);
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') move('LEFT');
+                if (e.key === 'ArrowRight') move('RIGHT');
+                if (e.key === ' ') shoot();
+            });
+        }
+
+        function move(direction) {
+            fetch('/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction: direction })
+            })
+            .then(response => response.json())
+            .then(updateGame);
+        }
+
+        function shoot() {
+            fetch('/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shoot: true })
+            })
+            .then(response => response.json())
+            .then(updateGame);
         }
 
         function resetGame() {
@@ -267,17 +221,14 @@
             gameInterval = setInterval(() => {
                 fetch('/move', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ direction: null }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
                 })
                 .then(response => response.json())
                 .then(updateGame);
-            }, 100);
+            }, 50);
         }
 
-        // Initialize controls and start game
         setupControls();
         resetGame();
     </script>
