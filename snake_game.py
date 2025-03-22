@@ -2,9 +2,7 @@ from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import random
 
-app = Flask(__name__,
-           template_folder='/var/www/snake-game/templates',
-           static_folder='/var/www/snake-game/static')
+app = Flask(__name__)
 CORS(app)
 
 # Game state
@@ -100,4 +98,4 @@ def reset():
 
 if __name__ == '__main__':
     reset_game()
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5001)
