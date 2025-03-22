@@ -2,49 +2,119 @@
 <html>
 <head>
     <title>Fishing Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #e6f3ff;  /* Light blue background */
+            background-color: #e6f3ff;
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            min-height: 100vh;
+            touch-action: none; /* Prevents default touch behaviors */
         }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 10px auto;
+        }
+
         #gameCanvas {
+            width: 100%;
+            height: auto;
             border: 2px solid #0077be;
-            background-color: #00a6ed;  /* Ocean blue */
-            margin: 20px;
+            background-color: #00a6ed;
+            border-radius: 10px;
         }
+
         #score {
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #005c99;  /* Darker blue */
+            font-size: 1.5rem;
+            margin: 10px 0;
+            color: #005c99;
+            text-align: center;
         }
+
         #gameOver {
             display: none;
             color: #cc0000;
-            font-size: 24px;
-            margin-bottom: 20px;
+            font-size: 1.2rem;
+            margin: 10px 0;
+            text-align: center;
         }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
+
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto;
+        }
+
+        .control-btn {
+            padding: 15px;
+            font-size: 1.2rem;
             cursor: pointer;
             background-color: #005c99;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
-        button:hover {
+
+        .control-btn:active {
             background-color: #004d80;
+        }
+
+        #resetBtn {
+            grid-column: 1 / span 3;
+            background-color: #4CAF50;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 5px;
+            }
+
+            #score {
+                font-size: 1.2rem;
+            }
+
+            .control-btn {
+                padding: 12px;
+                font-size: 1rem;
+            }
+        }
+
+        /* Hide controls on desktop */
+        @media (min-width: 1024px) {
+            #controls {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
     <div id="score">Catch Value: 0</div>
     <div id="gameOver">Game Over! Your line got tangled. Press Reset to fish again!</div>
-    <canvas id="gameCanvas" width="600" height="400"></canvas>
-    <button onclick="resetGame()">Cast New Line</button>
+    
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+    </div>
+
+    <div id="controls">
+        <button class="control-btn" id="upBtn">↑</button>
+        <button class="control-btn" id="downBtn">↓</button>
+        <button class="control-btn" id="leftBtn">←</button>
+        <button class="control-btn" id="rightBtn">→</button>
+        <button class="control-btn" id="resetBtn">Cast New Line</button>
+    </div>
 
     <script>
         const GRID_SIZE = 20;
@@ -54,7 +124,56 @@
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
+
+        // Resize canvas to maintain aspect ratio
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            const containerWidth = container.clientWidth;
+            canvas.style.width = containerWidth + 'px';
+            canvas.style.height = (containerWidth * (GRID_HEIGHT / GRID_WIDTH)) + 'px';
+        }
+
+        // Initial resize and add resize listener
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Touch controls
+        function setupControls() {
+            const controls = {
+                'upBtn': 'UP',
+                'downBtn': 'DOWN',
+                'leftBtn': 'LEFT',
+                'rightBtn': 'RIGHT'
+            };
+
+            for (const [btnId, direction] of Object.entries(controls)) {
+                const btn = document.getElementById(btnId);
+                
+                // Handle both touch and click events
+                ['touchstart', 'mousedown'].forEach(eventType => {
+                    btn.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        moveDirection(direction);
+                    });
+                });
+            }
+
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+        }
+
+        function moveDirection(direction) {
+            fetch('/move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ direction: direction }),
+            })
+            .then(response => response.json())
+            .then(updateGame);
+        }
+
+        // Keyboard controls
         document.addEventListener('keydown', handleKeyPress);
 
         function handleKeyPress(event) {
@@ -67,24 +186,20 @@
             
             if (keyMap[event.key]) {
                 event.preventDefault();
-                fetch('/move', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ direction: keyMap[event.key] }),
-                })
-                .then(response => response.json())
-                .then(updateGame);
+                moveDirection(keyMap[event.key]);
             }
         }
 
         function drawGame(gameState) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+            // Calculate scale factors
+            const scaleX = canvas.width / (GRID_WIDTH * GRID_SIZE);
+            const scaleY = canvas.height / (GRID_HEIGHT * GRID_SIZE);
+
             // Draw fishing line
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2 * Math.min(scaleX, scaleY);
             let prevPoint = null;
             gameState.fishing_line.forEach(([x, y]) => {
                 const currentPoint = {
@@ -101,25 +216,29 @@
                 prevPoint = currentPoint;
             });
 
-            // Draw hook at the head
+            // Draw hook
             const [headX, headY] = gameState.fishing_line[0];
             ctx.fillStyle = '#silver';
             ctx.beginPath();
-            ctx.arc(headX * GRID_SIZE + GRID_SIZE/2, headY * GRID_SIZE + GRID_SIZE/2, 
-                   GRID_SIZE/3, 0, Math.PI * 2);
+            ctx.arc(
+                headX * GRID_SIZE + GRID_SIZE/2,
+                headY * GRID_SIZE + GRID_SIZE/2,
+                GRID_SIZE/3,
+                0,
+                Math.PI * 2
+            );
             ctx.fill();
 
             // Draw fish
             const fishColors = {
-                'normal': '#ffcc00',    // Gold
-                'rare': '#ff6600',      // Orange
-                'special': '#ff0000'    // Red
+                'normal': '#ffcc00',
+                'rare': '#ff6600',
+                'special': '#ff0000'
             };
             
             ctx.fillStyle = fishColors[gameState.fish_type];
             const [fishX, fishY] = gameState.fish;
             
-            // Draw fish shape
             ctx.beginPath();
             ctx.moveTo(fishX * GRID_SIZE, fishY * GRID_SIZE + GRID_SIZE/2);
             ctx.lineTo(fishX * GRID_SIZE + GRID_SIZE, fishY * GRID_SIZE);
@@ -158,7 +277,8 @@
             }, 100);
         }
 
-        // Start the game
+        // Initialize controls and start game
+        setupControls();
         resetGame();
     </script>
 </body>
