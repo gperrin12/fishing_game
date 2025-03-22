@@ -2,7 +2,9 @@ from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import random
 
-app = Flask(__name__)
+app = Flask(__name__,
+           template_folder='/var/www/snake-game/templates',
+           static_folder='/var/www/snake-game/static')
 CORS(app)
 
 # Game state
