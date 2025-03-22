@@ -178,18 +178,87 @@
         }
 
         function setupControls() {
-            document.getElementById('leftBtn').addEventListener('mousedown', () => move('LEFT'));
-            document.getElementById('rightBtn').addEventListener('mousedown', () => move('RIGHT'));
-            document.getElementById('shootBtn').addEventListener('click', shoot);
-            document.getElementById('resetBtn').addEventListener('click', resetGame);
+        // Touch controls
+        document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            move('LEFT');
+        });
+        document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            move('RIGHT');
+        });
+        document.getElementById('shootBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            shoot();
+        });
+        
+        // Mouse controls
+        document.getElementById('leftBtn').addEventListener('mousedown', () => move('LEFT'));
+        document.getElementById('rightBtn').addEventListener('mousedown', () => move('RIGHT'));
+        document.getElementById('shootBtn').addEventListener('click', shoot);
+        document.getElementById('resetBtn').addEventListener('click', resetGame);
 
-            // Keyboard controls
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'ArrowLeft') move('LEFT');
-                if (e.key === 'ArrowRight') move('RIGHT');
-                if (e.key === ' ') shoot();
-            });
-        }
+        // Keyboard controls with continuous movement
+        let keyState = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keyState[e.key] = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                shoot();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keyState[e.key] = false;
+        });
+
+        // Continuous movement check
+        setInterval(() => {
+            if (keyState['ArrowLeft']) move('LEFT');
+            if (keyState['ArrowRight']) move('RIGHT');
+        }, 50);
+    }
+
+    function move(direction) {
+        fetch('/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ direction: direction })
+        })
+        .then(response => response.json())
+        .then(updateGame)
+        .catch(error => console.error('Error:', error));
+    }
+
+    function shoot() {
+        fetch('/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shoot: true })
+        })
+        .then(response => response.json())
+        .then(updateGame)
+        .catch(error => console.error('Error:', error));
+    }
+
+    function resetGame() {
+        document.getElementById('gameOver').style.display = 'none';
+        fetch('/reset', { method: 'POST' })
+            .then(response => response.json())
+            .then(updateGame);
+        
+        clearInterval(gameInterval);
+        gameInterval = setInterval(() => {
+            fetch('/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(updateGame);
+        }, 50);
+    }
 
         function move(direction) {
             fetch('/move', {
