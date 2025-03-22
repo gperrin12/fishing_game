@@ -1,27 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Snake Game</title>
+    <title>Fishing Game</title>
     <style>
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #f0f0f0;
+            background-color: #e6f3ff;  /* Light blue background */
             font-family: Arial, sans-serif;
         }
         #gameCanvas {
-            border: 2px solid #333;
-            background-color: #fff;
+            border: 2px solid #0077be;
+            background-color: #00a6ed;  /* Ocean blue */
             margin: 20px;
         }
         #score {
             font-size: 24px;
             margin-bottom: 20px;
+            color: #005c99;  /* Darker blue */
         }
         #gameOver {
             display: none;
-            color: red;
+            color: #cc0000;
             font-size: 24px;
             margin-bottom: 20px;
         }
@@ -29,21 +30,21 @@
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
-            background-color: #4CAF50;
+            background-color: #005c99;
             color: white;
             border: none;
             border-radius: 5px;
         }
         button:hover {
-            background-color: #45a049;
+            background-color: #004d80;
         }
     </style>
 </head>
 <body>
-    <div id="score">Score: 0</div>
-    <div id="gameOver">Game Over! Press Reset to play again.</div>
+    <div id="score">Catch Value: 0</div>
+    <div id="gameOver">Game Over! Your line got tangled. Press Reset to fish again!</div>
     <canvas id="gameCanvas" width="600" height="400"></canvas>
-    <button onclick="resetGame()">Reset</button>
+    <button onclick="resetGame()">Cast New Line</button>
 
     <script>
         const GRID_SIZE = 20;
@@ -81,25 +82,55 @@
         function drawGame(gameState) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw snake
-            ctx.fillStyle = '#4CAF50';
-            gameState.snake.forEach(([x, y]) => {
-                ctx.fillRect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE - 1, GRID_SIZE - 1);
+            // Draw fishing line
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            let prevPoint = null;
+            gameState.fishing_line.forEach(([x, y]) => {
+                const currentPoint = {
+                    x: x * GRID_SIZE + GRID_SIZE/2,
+                    y: y * GRID_SIZE + GRID_SIZE/2
+                };
+                
+                if (prevPoint) {
+                    ctx.beginPath();
+                    ctx.moveTo(prevPoint.x, prevPoint.y);
+                    ctx.lineTo(currentPoint.x, currentPoint.y);
+                    ctx.stroke();
+                }
+                prevPoint = currentPoint;
             });
 
-            // Draw food
-            ctx.fillStyle = '#FF0000';
-            ctx.fillRect(
-                gameState.food[0] * GRID_SIZE,
-                gameState.food[1] * GRID_SIZE,
-                GRID_SIZE - 1,
-                GRID_SIZE - 1
-            );
+            // Draw hook at the head
+            const [headX, headY] = gameState.fishing_line[0];
+            ctx.fillStyle = '#silver';
+            ctx.beginPath();
+            ctx.arc(headX * GRID_SIZE + GRID_SIZE/2, headY * GRID_SIZE + GRID_SIZE/2, 
+                   GRID_SIZE/3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw fish
+            const fishColors = {
+                'normal': '#ffcc00',    // Gold
+                'rare': '#ff6600',      // Orange
+                'special': '#ff0000'    // Red
+            };
+            
+            ctx.fillStyle = fishColors[gameState.fish_type];
+            const [fishX, fishY] = gameState.fish;
+            
+            // Draw fish shape
+            ctx.beginPath();
+            ctx.moveTo(fishX * GRID_SIZE, fishY * GRID_SIZE + GRID_SIZE/2);
+            ctx.lineTo(fishX * GRID_SIZE + GRID_SIZE, fishY * GRID_SIZE);
+            ctx.lineTo(fishX * GRID_SIZE + GRID_SIZE, fishY * GRID_SIZE + GRID_SIZE);
+            ctx.closePath();
+            ctx.fill();
         }
 
         function updateGame(gameState) {
             drawGame(gameState);
-            document.getElementById('score').textContent = `Score: ${gameState.score}`;
+            document.getElementById('score').textContent = `Catch Value: ${gameState.score}`;
             
             if (gameState.game_over) {
                 document.getElementById('gameOver').style.display = 'block';
