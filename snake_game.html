@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+            background-color: #fff;
+            margin: 20px;
+        }
+        #score {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        #gameOver {
+            display: none;
+            color: red;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <div id="gameOver">Game Over! Press Reset to play again.</div>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <button onclick="resetGame()">Reset</button>
+
+    <script>
+        const GRID_SIZE = 20;
+        const GRID_WIDTH = 30;
+        const GRID_HEIGHT = 20;
+        let gameInterval;
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        document.addEventListener('keydown', handleKeyPress);
+
+        function handleKeyPress(event) {
+            const keyMap = {
+                'ArrowUp': 'UP',
+                'ArrowDown': 'DOWN',
+                'ArrowLeft': 'LEFT',
+                'ArrowRight': 'RIGHT'
+            };
+            
+            if (keyMap[event.key]) {
+                event.preventDefault();
+                fetch('/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ direction: keyMap[event.key] }),
+                })
+                .then(response => response.json())
+                .then(updateGame);
+            }
+        }
+
+        function drawGame(gameState) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw snake
+            ctx.fillStyle = '#4CAF50';
+            gameState.snake.forEach(([x, y]) => {
+                ctx.fillRect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE - 1, GRID_SIZE - 1);
+            });
+
+            // Draw food
+            ctx.fillStyle = '#FF0000';
+            ctx.fillRect(
+                gameState.food[0] * GRID_SIZE,
+                gameState.food[1] * GRID_SIZE,
+                GRID_SIZE - 1,
+                GRID_SIZE - 1
+            );
+        }
+
+        function updateGame(gameState) {
+            drawGame(gameState);
+            document.getElementById('score').textContent = `Score: ${gameState.score}`;
+            
+            if (gameState.game_over) {
+                document.getElementById('gameOver').style.display = 'block';
+                clearInterval(gameInterval);
+            }
+        }
+
+        function resetGame() {
+            document.getElementById('gameOver').style.display = 'none';
+            fetch('/reset', { method: 'POST' })
+                .then(response => response.json())
+                .then(updateGame);
+            
+            clearInterval(gameInterval);
+            gameInterval = setInterval(() => {
+                fetch('/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ direction: null }),
+                })
+                .then(response => response.json())
+                .then(updateGame);
+            }, 100);
+        }
+
+        // Start the game
+        resetGame();
+    </script>
+</body>
+</html>
