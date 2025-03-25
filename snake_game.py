@@ -17,23 +17,36 @@ except:
 
 # Map definition (1 = wall, 0 = empty)
 MAP = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
-    [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
-    [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 2, 2, 2, 0, 0, 0, 1, 0, 0, 0, 3, 3, 3, 0, 0, 0, 1],
+    [1, 0, 0, 2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3, 0, 3, 0, 0, 0, 1],
+    [1, 0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 4, 4, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 5, 5, 0, 0, 1],
+    [1, 0, 0, 4, 4, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 5, 5, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
+
+# Define wall textures for different wall types
+WALL_TEXTURES = {
+    1: "stone",      # Regular stone walls
+    2: "tech",       # Tech walls (like computer panels)
+    3: "slime",      # Slime-covered walls
+    4: "blood",      # Blood-stained walls
+    5: "metal"       # Metal walls
+}
 
 # Game state
 game_state = {
@@ -47,7 +60,17 @@ game_state = {
         'casting_speed': 1.0,
         'power_ups': [],
         'current_lure': 'fly',
-        'power_ups_used': []
+        'power_ups_used': [],
+        'health': 100,
+        'armor': 0,
+        'current_weapon': 'pistol',
+        'weapons': ['pistol'],
+        'ammo': {
+            'bullets': 50,
+            'shells': 0,
+            'cells': 0
+        },
+        'weapon_cooldown': 0
     },
     'fish': [],  # [{'x': x, 'y': y, 'type': 'bass', 'speed': speed, 'health': health}]
     'boss': None,  # {'x': x, 'y': y, 'health': health, 'pattern': pattern}
@@ -68,10 +91,42 @@ LURE_TYPES = {
 }
 
 FISH_TYPES = {
-    'bluegill': {'speed': 0.03, 'health': 1, 'damage': 1, 'points': 10},
-    'bass': {'speed': 0.02, 'health': 2, 'damage': 2, 'points': 20},
-    'pike': {'speed': 0.04, 'health': 1, 'damage': 3, 'points': 15},
-    'muskie': {'speed': 0.01, 'health': 4, 'damage': 5, 'points': 30}
+    'imp': {
+        'color': '#ff4500',
+        'speed': 0.04,
+        'health': 3,
+        'damage': 2,
+        'points': 100,
+        'attack_type': 'melee',
+        'sprite': 'imp'
+    },
+    'demon': {
+        'color': '#8b0000',
+        'speed': 0.03,
+        'health': 5,
+        'damage': 3,
+        'points': 200,
+        'attack_type': 'charge',
+        'sprite': 'demon'
+    },
+    'cacodemon': {
+        'color': '#ff1493',
+        'speed': 0.02,
+        'health': 8,
+        'damage': 4,
+        'points': 300,
+        'attack_type': 'projectile',
+        'sprite': 'cacodemon'
+    },
+    'baron': {
+        'color': '#006400',
+        'speed': 0.015,
+        'health': 15,
+        'damage': 6,
+        'points': 500,
+        'attack_type': 'projectile',
+        'sprite': 'baron'
+    }
 }
 
 POWER_UPS = {
@@ -90,6 +145,53 @@ BOSS_PATTERNS = {
         'health': 75,
         'points': 750,
         'attack_patterns': ['sweep', 'dive', 'shield']
+    }
+}
+
+# Define weapons similar to Doom
+WEAPONS = {
+    'pistol': {
+        'damage': 1,
+        'speed': 0.3,
+        'cooldown': 20,
+        'sprite': 'pistol',
+        'sound': 'pistol',
+        'ammo_type': 'bullets'
+    },
+    'shotgun': {
+        'damage': 2,
+        'speed': 0.25,
+        'cooldown': 30,
+        'spread': 3,
+        'pellets': 7,
+        'sprite': 'shotgun',
+        'sound': 'shotgun',
+        'ammo_type': 'shells'
+    },
+    'chaingun': {
+        'damage': 1,
+        'speed': 0.3,
+        'cooldown': 5,
+        'sprite': 'chaingun',
+        'sound': 'chaingun',
+        'ammo_type': 'bullets'
+    },
+    'plasma': {
+        'damage': 2,
+        'speed': 0.4,
+        'cooldown': 10,
+        'sprite': 'plasma',
+        'sound': 'plasma',
+        'ammo_type': 'cells'
+    },
+    'bfg': {
+        'damage': 10,
+        'speed': 0.2,
+        'cooldown': 60,
+        'sprite': 'bfg',
+        'sound': 'bfg',
+        'ammo_type': 'cells',
+        'explosion_radius': 3
     }
 }
 
@@ -115,6 +217,16 @@ def reset_game():
     game_state['player']['power_ups'] = []
     game_state['player']['current_lure'] = 'fly'
     game_state['player']['power_ups_used'] = []
+    game_state['player']['health'] = 100
+    game_state['player']['armor'] = 0
+    game_state['player']['current_weapon'] = 'pistol'
+    game_state['player']['weapons'] = ['pistol']
+    game_state['player']['ammo'] = {
+        'bullets': 50,
+        'shells': 0,
+        'cells': 0
+    }
+    game_state['player']['weapon_cooldown'] = 0
     game_state['fish'] = []
     game_state['boss'] = None
     game_state['score'] = 0
@@ -177,18 +289,25 @@ class Game:
             'x': 2.0,
             'y': 2.0,
             'angle': 0.0,
-            'lures': float('inf'),  # Unlimited lures
-            'lure_power': 1.0,      # Base lure power
-            'lure_speed': 1.0,      # Base lure speed
-            'power_ups': []         # Active power-ups
+            'health': 100,
+            'armor': 0,
+            'current_weapon': 'pistol',
+            'weapons': ['pistol'],
+            'ammo': {
+                'bullets': 50,
+                'shells': 0,
+                'cells': 0
+            },
+            'weapon_cooldown': 0,
+            'power_ups': []
         }
         self.fish = []
         self.score = 0
         self.game_over = False
-        self.power_ups = []  # Power-ups in the level
+        self.power_ups = []
         
         # Spawn initial fish
-        self.spawn_fish(3)
+        self.spawn_fish(5)
         
         # Spawn initial power-ups
         self.spawn_power_ups(5)
@@ -268,47 +387,52 @@ class Game:
         return True
     
     def shoot(self):
-        if self.player['lures'] <= 0:
+        # Check if weapon is on cooldown
+        if self.player['weapon_cooldown'] > 0:
             return False
         
-        self.player['lures'] -= 1
+        weapon = WEAPONS[self.player['current_weapon']]
+        ammo_type = weapon['ammo_type']
         
-        # Create a new bullet with current power-up effects
+        # Check if player has ammo
+        if self.player['ammo'][ammo_type] <= 0:
+            return False
+        
+        # Consume ammo
+        self.player['ammo'][ammo_type] -= 1
+        
+        # Set weapon cooldown
+        self.player['weapon_cooldown'] = weapon['cooldown']
+        
+        # Handle different weapon types
+        if 'pellets' in weapon:  # Shotgun-like
+            for _ in range(weapon['pellets']):
+                spread = random.uniform(-weapon['spread'] * 0.01, weapon['spread'] * 0.01)
+                self.create_bullet(self.player['angle'] + spread, weapon['damage'], weapon['speed'])
+        elif self.player['current_weapon'] == 'bfg':  # BFG-like
+            self.create_bullet(self.player['angle'], weapon['damage'], weapon['speed'], explosion_radius=weapon['explosion_radius'])
+        else:  # Regular weapon
+            self.create_bullet(self.player['angle'], weapon['damage'], weapon['speed'])
+        
+        return True
+    
+    def create_bullet(self, angle, damage, speed, explosion_radius=0):
         bullet = {
             'x': self.player['x'],
             'y': self.player['y'],
-            'angle': self.player['angle'],
-            'speed': 0.2 * self.player['lure_speed'],
-            'damage': 1 * self.player['lure_power'],
+            'angle': angle,
+            'speed': speed,
+            'damage': damage,
             'distance': 0,
-            'max_distance': 10,
-            'active': True
+            'max_distance': 15,
+            'active': True,
+            'explosion_radius': explosion_radius
         }
         
-        # Add bullet to player
         if 'bullets' not in self.player:
             self.player['bullets'] = []
         
         self.player['bullets'].append(bullet)
-        
-        # If spread shot is active, add additional bullets
-        has_spread = any(pu['effect'] == 'spread_shot' for pu in self.player['power_ups'])
-        if has_spread:
-            # Add bullets at angles to the left and right
-            for angle_offset in [-0.2, 0.2]:
-                spread_bullet = {
-                    'x': self.player['x'],
-                    'y': self.player['y'],
-                    'angle': self.player['angle'] + angle_offset,
-                    'speed': 0.2 * self.player['lure_speed'],
-                    'damage': 1 * self.player['lure_power'],
-                    'distance': 0,
-                    'max_distance': 10,
-                    'active': True
-                }
-                self.player['bullets'].append(spread_bullet)
-        
-        return True
     
     def update(self):
         # Make sure we have bullet and explosion arrays
@@ -541,6 +665,58 @@ class Game:
                     self.player['lure_speed'] = 1.0
                 
                 self.player['power_ups'].remove(power_up)
+        
+        # Update pickups
+        if hasattr(self, 'pickups'):
+            for pickup in self.pickups[:]:
+                # Decrease time
+                pickup['time'] -= 1
+                
+                # Remove expired pickups
+                if pickup['time'] <= 0:
+                    self.pickups.remove(pickup)
+                    continue
+                
+                # Check if player picked up
+                dx = pickup['x'] - self.player['x']
+                dy = pickup['y'] - self.player['y']
+                dist = math.sqrt(dx**2 + dy**2)
+                
+                if dist < 1.0:
+                    if pickup['type'] == 'weapon':
+                        # Add weapon to player's inventory
+                        if pickup['weapon'] not in self.player['weapons']:
+                            self.player['weapons'].append(pickup['weapon'])
+                            print(f"Player picked up weapon: {pickup['weapon']}")
+                            
+                            # Switch to the new weapon
+                            self.player['current_weapon'] = pickup['weapon']
+                            
+                            # Add some ammo for the weapon
+                            ammo_type = WEAPONS[pickup['weapon']]['ammo_type']
+                            if ammo_type == 'bullets':
+                                self.player['ammo']['bullets'] += 20
+                            elif ammo_type == 'shells':
+                                self.player['ammo']['shells'] += 8
+                            else:  # cells
+                                self.player['ammo']['cells'] += 30
+                    
+                    elif pickup['type'] == 'ammo':
+                        # Add ammo to player's inventory
+                        self.player['ammo'][pickup['ammo_type']] += pickup['amount']
+                        print(f"Player picked up {pickup['amount']} {pickup['ammo_type']}")
+                    
+                    # Remove the pickup
+                    self.pickups.remove(pickup)
+                    
+                    # Create explosion effect
+                    self.player['explosions'].append({
+                        'x': pickup['x'],
+                        'y': pickup['y'],
+                        'size': 0.5,
+                        'time': 10,
+                        'color': '#ffff00'  # Yellow for pickups
+                    })
     
     def get_state(self):
         return {
@@ -587,6 +763,138 @@ class Game:
                 'rotation': random.uniform(0, 2 * math.pi),
                 'bob_offset': random.uniform(0, 2 * math.pi)
             })
+
+    def fish_attack(self, fish):
+        # Calculate distance to player
+        dx = self.player['x'] - fish['x']
+        dy = self.player['y'] - fish['y']
+        dist = math.sqrt(dx**2 + dy**2)
+        
+        # Only attack if close enough
+        if dist > 5:
+            return
+        
+        attack_type = FISH_TYPES[fish['type']]['attack_type']
+        
+        if attack_type == 'melee' and dist < 1.5:
+            # Melee attack - direct damage to player
+            if 'health' not in self.player:
+                self.player['health'] = 100
+            
+            self.player['health'] -= FISH_TYPES[fish['type']]['damage']
+            
+            # Create explosion for attack visualization
+            self.player['explosions'].append({
+                'x': self.player['x'],
+                'y': self.player['y'],
+                'size': 0.5,
+                'time': 5,
+                'color': '#ff0000'
+            })
+            
+            # Check if player died
+            if self.player['health'] <= 0:
+                self.game_over = True
+        
+        elif attack_type == 'charge' and dist < 4:
+            # Charge attack - fish rushes at player
+            fish['state'] = 'charge'
+            fish['state_timer'] = 30
+            fish['target_x'] = self.player['x']
+            fish['target_y'] = self.player['y']
+        
+        elif attack_type == 'projectile' and dist < 8 and random.random() < 0.05:
+            # Projectile attack - fish shoots at player
+            if 'projectiles' not in fish:
+                fish['projectiles'] = []
+            
+            angle = math.atan2(dy, dx)
+            fish['projectiles'].append({
+                'x': fish['x'],
+                'y': fish['y'],
+                'angle': angle,
+                'speed': 0.1,
+                'damage': FISH_TYPES[fish['type']]['damage'] / 2,
+                'distance': 0,
+                'max_distance': 10
+            })
+
+    def spawn_weapon_pickup(self):
+        # Determine which weapons the player doesn't have
+        available_weapons = [w for w in WEAPONS.keys() if w not in self.player['weapons']]
+        
+        if not available_weapons:
+            return  # Player has all weapons
+        
+        # Choose a random weapon
+        weapon = random.choice(available_weapons)
+        
+        # Find a valid position
+        valid_position = False
+        x, y = 0, 0
+        
+        while not valid_position:
+            x = random.uniform(1, len(MAP[0]) - 1)
+            y = random.uniform(1, len(MAP) - 1)
+            
+            # Check if position is valid (not in a wall)
+            if self.is_valid_position(x, y):
+                valid_position = True
+        
+        # Create the pickup
+        pickup = {
+            'type': 'weapon',
+            'weapon': weapon,
+            'x': x,
+            'y': y,
+            'time': 600  # How long the pickup stays
+        }
+        
+        if 'pickups' not in self.__dict__:
+            self.pickups = []
+        
+        self.pickups.append(pickup)
+        print(f"Spawned weapon pickup: {weapon} at ({x}, {y})")
+
+    def spawn_ammo_pickup(self):
+        # Choose a random ammo type
+        ammo_type = random.choice(['bullets', 'shells', 'cells'])
+        
+        # Determine amount based on type
+        if ammo_type == 'bullets':
+            amount = random.randint(5, 20)
+        elif ammo_type == 'shells':
+            amount = random.randint(2, 8)
+        else:  # cells
+            amount = random.randint(10, 30)
+        
+        # Find a valid position
+        valid_position = False
+        x, y = 0, 0
+        
+        while not valid_position:
+            x = random.uniform(1, len(MAP[0]) - 1)
+            y = random.uniform(1, len(MAP) - 1)
+            
+            # Check if position is valid (not in a wall)
+            if self.is_valid_position(x, y):
+                valid_position = True
+        
+        # Create the pickup
+        pickup = {
+            'type': 'ammo',
+            'ammo_type': ammo_type,
+            'amount': amount,
+            'x': x,
+            'y': y,
+            'time': 600  # How long the pickup stays
+        }
+        
+        if 'pickups' not in self.__dict__:
+            self.pickups = []
+        
+        self.pickups.append(pickup)
+        print(f"Spawned {amount} {ammo_type} pickup at ({x}, {y})")
 
 game = Game()
 
@@ -756,6 +1064,19 @@ def hit_fish_route():
     
     state = game.get_state()
     return jsonify(state)
+
+@app.route('/switch-weapon', methods=['POST'])
+def switch_weapon():
+    data = request.get_json()
+    weapon = data.get('weapon')
+    
+    if weapon in WEAPONS and weapon in game.player['weapons']:
+        game.player['current_weapon'] = weapon
+        print(f"Switched to weapon: {weapon}")
+    else:
+        print(f"Cannot switch to weapon: {weapon}")
+    
+    return jsonify(game.get_state())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

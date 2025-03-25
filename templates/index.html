@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Fishing Shooter 3D</title>
+    <title>Doom Fishing</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #2a2a2a;
-            font-family: Arial, sans-serif;
+            background-color: #000;
+            font-family: 'Press Start 2P', cursive;
             margin: 0;
             padding: 10px;
             min-height: 100vh;
@@ -35,21 +36,24 @@
         #score {
             font-size: 1.5rem;
             margin: 10px 0;
-            color: #4CAF50;
+            color: #ff0000;
+            text-shadow: 2px 2px 0px #000;
             text-align: center;
         }
 
         #ammo {
             font-size: 1.2rem;
             margin: 5px 0;
-            color: #ff9800;
+            color: #ff9900;
+            text-shadow: 2px 2px 0px #000;
             text-align: center;
         }
 
         #gameOver {
             display: none;
-            color: #cc0000;
-            font-size: 1.2rem;
+            color: #ff0000;
+            font-size: 2rem;
+            text-shadow: 3px 3px 0px #000;
             margin: 10px 0;
             text-align: center;
         }
@@ -67,16 +71,16 @@
             padding: 15px;
             font-size: 1.2rem;
             cursor: pointer;
-            background-color: #444;
+            background-color: #8b0000;
             color: white;
-            border: none;
+            border: 2px solid #ff0000;
             border-radius: 10px;
             touch-action: manipulation;
         }
 
         #shootBtn {
             grid-column: 2;
-            background-color: #cc0000;
+            background-color: #ff0000;
         }
 
         #resetBtn {
@@ -115,11 +119,60 @@
                 font-size: 1rem;
             }
         }
+
+        /* Add weapon selection UI */
+        #weaponSelector {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        
+        .weapon-btn {
+            padding: 5px 10px;
+            margin: 0 5px;
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #666;
+            cursor: pointer;
+        }
+        
+        .weapon-btn.active {
+            background-color: #ff0000;
+            border-color: #ff6666;
+        }
+        
+        /* Add health bar */
+        #healthBar {
+            width: 100%;
+            max-width: 300px;
+            height: 20px;
+            background-color: #333;
+            margin: 10px auto;
+            border: 2px solid #666;
+        }
+        
+        #healthFill {
+            height: 100%;
+            background-color: #ff0000;
+            width: 100%;
+        }
+        
+        /* Add ammo display */
+        #ammoDisplay {
+            display: flex;
+            justify-content: center;
+            margin: 5px 0;
+        }
+        
+        .ammo-type {
+            margin: 0 10px;
+            color: #ff9900;
+        }
     </style>
 </head>
 <body>
     <div id="score">Score: 0</div>
-    <div id="ammo">Lure Power: 1.0x</div>
+    <div id="ammo">Health: 100</div>
     <div id="gameOver">Game Over! The fish have taken over the lake!</div>
     
     <div id="gameContainer">
@@ -137,6 +190,21 @@
         <button class="control-btn" id="spawnFishBtn" style="background-color: #2196F3;">Spawn Fish</button>
         <button class="control-btn" id="debugBtn" style="background-color: #673AB7;">Debug</button>
         <button class="control-btn" id="directHitBtn" style="background-color: #E91E63;">Direct Hit</button>
+    </div>
+
+    <div id="healthBar"><div id="healthFill"></div></div>
+    <div id="ammoDisplay">
+        <div class="ammo-type">BULLETS: <span id="bulletAmmo">50</span></div>
+        <div class="ammo-type">SHELLS: <span id="shellAmmo">0</span></div>
+        <div class="ammo-type">CELLS: <span id="cellAmmo">0</span></div>
+    </div>
+
+    <div id="weaponSelector">
+        <button class="weapon-btn active" data-weapon="pistol">PISTOL</button>
+        <button class="weapon-btn" data-weapon="shotgun">SHOTGUN</button>
+        <button class="weapon-btn" data-weapon="chaingun">CHAINGUN</button>
+        <button class="weapon-btn" data-weapon="plasma">PLASMA</button>
+        <button class="weapon-btn" data-weapon="bfg">BFG</button>
     </div>
 
     <audio id="splashSound" src="https://assets.mixkit.co/sfx/preview/mixkit-water-splash-1295.mp3" preload="auto"></audio>
@@ -307,21 +375,20 @@
         }
 
         function drawWalls() {
-            console.log("Drawing walls...");
             const width = canvas.width;
             const height = canvas.height;
             
             // Draw sky
             const skyGradient = ctx.createLinearGradient(0, 0, 0, height/2);
-            skyGradient.addColorStop(0, "#87CEEB");
-            skyGradient.addColorStop(1, "#E0F7FA");
+            skyGradient.addColorStop(0, "#4a0000");  // Dark red for Doom-like sky
+            skyGradient.addColorStop(1, "#700000");  // Lighter red
             ctx.fillStyle = skyGradient;
             ctx.fillRect(0, 0, width, height/2);
             
-            // Draw ground/water
+            // Draw ground
             const groundGradient = ctx.createLinearGradient(0, height/2, 0, height);
-            groundGradient.addColorStop(0, "#0077be");
-            groundGradient.addColorStop(1, "#005a87");
+            groundGradient.addColorStop(0, "#302020");  // Dark brown
+            groundGradient.addColorStop(1, "#201010");  // Darker brown
             ctx.fillStyle = groundGradient;
             ctx.fillRect(0, height/2, width, height/2);
             
@@ -336,10 +403,7 @@
                 // Cast ray
                 const result = castRay(rayAngle);
                 
-                if (!result) {
-                    console.error("Ray casting failed for angle:", rayAngle);
-                    continue;
-                }
+                if (!result) continue;
                 
                 // Calculate wall height
                 const wallDist = result.distance;
@@ -348,19 +412,74 @@
                 // Draw wall
                 const wallY = (height - wallHeight) / 2;
                 
-                // Determine wall color based on orientation
-                let wallColor;
-                if (result.side === 0) {
-                    wallColor = result.stepX > 0 ? "#228B22" : "#006400"; // Green for X walls
-                } else {
-                    wallColor = result.stepY > 0 ? "#8B4513" : "#A0522D"; // Brown for Y walls
+                // Determine wall texture based on wall type
+                let wallTexture;
+                const wallType = MAP[result.mapY][result.mapX];
+                
+                // Default to stone texture if textures aren't loaded yet
+                if (!textures.walls.stone.complete) {
+                    // Fallback to colored walls
+                    let wallColor;
+                    if (result.side === 0) {
+                        wallColor = result.stepX > 0 ? "#AA0000" : "#880000"; // Red for X walls
+                    } else {
+                        wallColor = result.stepY > 0 ? "#770000" : "#550000"; // Darker red for Y walls
+                    }
+                    
+                    ctx.fillStyle = wallColor;
+                    ctx.fillRect(x * rayWidth, wallY, rayWidth + 1, wallHeight);
+                    continue;
                 }
                 
-                ctx.fillStyle = wallColor;
-                ctx.fillRect(x * rayWidth, wallY, rayWidth + 1, wallHeight);
+                // Choose texture based on wall type
+                switch(wallType) {
+                    case 1: wallTexture = textures.walls.stone; break;
+                    case 2: wallTexture = textures.walls.tech; break;
+                    case 3: wallTexture = textures.walls.slime; break;
+                    case 4: wallTexture = textures.walls.blood; break;
+                    case 5: wallTexture = textures.walls.metal; break;
+                    default: wallTexture = textures.walls.stone;
+                }
+                
+                // Calculate texture coordinates
+                let textureX;
+                if (result.side === 0) {
+                    textureX = (gameState.player.y + wallDist * Math.sin(rayAngle)) % 1;
+                } else {
+                    textureX = (gameState.player.x + wallDist * Math.cos(rayAngle)) % 1;
+                }
+                
+                // Flip texture X if needed
+                if ((result.side === 0 && Math.cos(rayAngle) < 0) || 
+                    (result.side === 1 && Math.sin(rayAngle) < 0)) {
+                    textureX = 1 - textureX;
+                }
+                
+                // Scale texture X to pixel coordinates
+                textureX = Math.floor(textureX * wallTexture.width);
+                
+                // Draw textured wall slice
+                try {
+                    ctx.drawImage(
+                        wallTexture,
+                        textureX, 0,
+                        1, wallTexture.height,
+                        x * rayWidth, wallY,
+                        rayWidth + 1, wallHeight
+                    );
+                    
+                    // Add shading based on distance and side
+                    let shade = 1.0 - (wallDist / 15);
+                    shade *= (result.side === 1) ? 0.7 : 1.0;  // Darker for Y-side walls
+                    
+                    ctx.fillStyle = `rgba(0, 0, 0, ${1 - shade})`;
+                    ctx.fillRect(x * rayWidth, wallY, rayWidth + 1, wallHeight);
+                } catch (e) {
+                    // Fallback if texture drawing fails
+                    ctx.fillStyle = "#550000";
+                    ctx.fillRect(x * rayWidth, wallY, rayWidth + 1, wallHeight);
+                }
             }
-            
-            console.log("Walls drawn");
         }
 
         function drawFish() {
@@ -376,7 +495,7 @@
                 return distB - distA;
             });
             
-            // Draw each fish as a sprite in the 3D world
+            // Draw each fish as a Doom-like sprite
             gameState.fish.forEach(fish => {
                 // Calculate fish position relative to player
                 const dx = fish.x - gameState.player.x;
@@ -392,8 +511,8 @@
                 // Calculate fish distance
                 const fishDist = Math.sqrt(dx * dx + dy * dy);
                 
-                // Play splash sound occasionally for nearby fish
-                if (fishDist < 10 && Math.random() < 0.01) {  // Increased frequency
+                // Play sound occasionally for nearby enemies
+                if (fishDist < 10 && Math.random() < 0.01) {
                     const splashSound = document.getElementById('splashSound');
                     splashSound.volume = Math.min(1.0, 8 / fishDist) * 0.4;
                     splashSound.currentTime = 0;
@@ -402,141 +521,137 @@
                 
                 // Check if fish is in field of view
                 if (Math.abs(fishAngle - gameState.player.angle) < player.fov / 2) {
-                    // Calculate fish size based on distance - INCREASED SIZE
-                    const fishSize = Math.min(height / 2, 8000 / fishDist);
+                    // Calculate fish size based on distance
+                    const fishSize = Math.min(height / 1.5, 10000 / fishDist);
                     
                     // Calculate screen position
                     const angleToCenter = fishAngle - gameState.player.angle;
                     const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
                     
-                    // Calculate vertical position based on distance (closer fish appear lower)
-                    const screenY = height / 2 + (fishDist < 3 ? 20 : 0);
+                    // Calculate vertical position based on distance
+                    const screenY = height / 2;
                     
-                    // Draw fish shadow on floor
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                    ctx.beginPath();
-                    ctx.ellipse(screenX, height / 2 + fishSize/2, fishSize / 3, fishSize / 6, 0, 0, 2 * Math.PI);
-                    ctx.fill();
+                    // Get the appropriate sprite
+                    const fishSprite = textures.sprites[fish.type];
                     
-                    // Add "bobbing" motion to simulate swimming
-                    const bobAmount = Math.sin(Date.now() / 300 + fish.x * 10) * 5;
-                    
-                    // Determine if fish is facing left or right relative to player
-                    const fishFacingRight = Math.cos(fish.direction - fishAngle) > 0;
-                    
-                    // Draw fish with enhanced visibility
-                    ctx.save();
-                    
-                    // Add glow effect for better visibility
-                    ctx.shadowColor = FISH_TYPES[fish.type].color;
-                    ctx.shadowBlur = 20;  // Increased blur
-                    ctx.fillStyle = FISH_TYPES[fish.type].color;
-                    
-                    // Draw fish body with increased size
-                    ctx.beginPath();
-                    if (fishFacingRight) {
-                        // Fish facing right
-                        ctx.ellipse(screenX, screenY + bobAmount, fishSize / 1.8, fishSize / 2.5, 0, 0, 2 * Math.PI);
+                    // Check if sprite is loaded
+                    if (fishSprite && fishSprite.complete) {
+                        // Draw sprite with scaling based on distance
+                        const spriteWidth = fishSize;
+                        const spriteHeight = fishSize * (fishSprite.height / fishSprite.width);
+                        
+                        ctx.save();
+                        
+                        // Add a shadow
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                        ctx.beginPath();
+                        ctx.ellipse(screenX, height / 2 + fishSize/2, fishSize / 3, fishSize / 6, 0, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Draw the sprite
+                        ctx.drawImage(
+                            fishSprite,
+                            screenX - spriteWidth / 2,
+                            screenY - spriteHeight / 2,
+                            spriteWidth,
+                            spriteHeight
+                        );
+                        
+                        // Add health bar
+                        const healthPercent = fish.health / FISH_TYPES[fish.type].health;
+                        const barWidth = fishSize * 0.8;
+                        const barHeight = fishSize / 15;
+                        
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                        ctx.fillRect(screenX - barWidth/2, screenY - spriteHeight/2 - barHeight*2, barWidth, barHeight);
+                        
+                        ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00';
+                        ctx.fillRect(screenX - barWidth/2, screenY - spriteHeight/2 - barHeight*2, barWidth * healthPercent, barHeight);
+                        
+                        ctx.restore();
                     } else {
-                        // Fish facing left
-                        ctx.ellipse(screenX, screenY + bobAmount, fishSize / 1.8, fishSize / 2.5, 0, 0, 2 * Math.PI);
+                        // Fallback to colored circles if sprites aren't loaded
+                        ctx.save();
+                        
+                        // Add glow effect for better visibility
+                        ctx.shadowColor = FISH_TYPES[fish.type].color;
+                        ctx.shadowBlur = 20;
+                        ctx.fillStyle = FISH_TYPES[fish.type].color;
+                        
+                        // Draw fish body
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, fishSize / 3, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Add health bar
+                        const healthPercent = fish.health / FISH_TYPES[fish.type].health;
+                        const barWidth = fishSize * 0.8;
+                        const barHeight = fishSize / 15;
+                        
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                        ctx.fillRect(screenX - barWidth/2, screenY - fishSize/2 - barHeight*2, barWidth, barHeight);
+                        
+                        ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00';
+                        ctx.fillRect(screenX - barWidth/2, screenY - fishSize/2 - barHeight*2, barWidth * healthPercent, barHeight);
+                        
+                        ctx.restore();
                     }
-                    ctx.fill();
-                    
-                    // Draw fish details
-                    // Draw fish eye
-                    ctx.shadowBlur = 0;
-                    ctx.fillStyle = '#000';
-                    ctx.beginPath();
-                    if (fishFacingRight) {
-                        ctx.arc(screenX + fishSize / 4, screenY + bobAmount - fishSize / 8, fishSize / 15, 0, 2 * Math.PI);
-                    } else {
-                        ctx.arc(screenX - fishSize / 4, screenY + bobAmount - fishSize / 8, fishSize / 15, 0, 2 * Math.PI);
-                    }
-                    ctx.fill();
-                    
-                    // Draw fish tail
-                    ctx.fillStyle = FISH_TYPES[fish.type].color;
-                    ctx.beginPath();
-                    if (fishFacingRight) {
-                        ctx.moveTo(screenX - fishSize / 3, screenY + bobAmount);
-                        ctx.lineTo(screenX - fishSize / 1.5, screenY + bobAmount - fishSize / 4);
-                        ctx.lineTo(screenX - fishSize / 1.5, screenY + bobAmount + fishSize / 4);
-                    } else {
-                        ctx.moveTo(screenX + fishSize / 3, screenY + bobAmount);
-                        ctx.lineTo(screenX + fishSize / 1.5, screenY + bobAmount - fishSize / 4);
-                        ctx.lineTo(screenX + fishSize / 1.5, screenY + bobAmount + fishSize / 4);
-                    }
-                    ctx.closePath();
-                    ctx.fill();
-                    
-                    // Draw fins
-                    ctx.beginPath();
-                    if (fishFacingRight) {
-                        ctx.moveTo(screenX, screenY + bobAmount - fishSize / 6);
-                        ctx.lineTo(screenX + fishSize / 6, screenY + bobAmount - fishSize / 3);
-                        ctx.lineTo(screenX - fishSize / 6, screenY + bobAmount - fishSize / 3);
-                    } else {
-                        ctx.moveTo(screenX, screenY + bobAmount - fishSize / 6);
-                        ctx.lineTo(screenX - fishSize / 6, screenY + bobAmount - fishSize / 3);
-                        ctx.lineTo(screenX + fishSize / 6, screenY + bobAmount - fishSize / 3);
-                    }
-                    ctx.closePath();
-                    ctx.fill();
-                    
-                    // Draw mouth
-                    ctx.fillStyle = '#600';
-                    ctx.beginPath();
-                    if (fishFacingRight) {
-                        ctx.arc(screenX + fishSize / 2, screenY + bobAmount, fishSize / 10, -Math.PI/4, Math.PI/4);
-                    } else {
-                        ctx.arc(screenX - fishSize / 2, screenY + bobAmount, fishSize / 10, Math.PI*3/4, Math.PI*5/4);
-                    }
-                    ctx.fill();
-                    
-                    // Add health bar for fish
-                    const healthPercent = fish.health / FISH_TYPES[fish.type].health;
-                    const barWidth = fishSize * 0.8;
-                    const barHeight = fishSize / 15;
-                    
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                    ctx.fillRect(screenX - barWidth/2, screenY + bobAmount - fishSize/2 - barHeight*2, barWidth, barHeight);
-                    
-                    ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00';
-                    ctx.fillRect(screenX - barWidth/2, screenY + bobAmount - fishSize/2 - barHeight*2, barWidth * healthPercent, barHeight);
-                    
-                    ctx.restore();
                 }
             });
         }
 
         function drawWeapon() {
+            if (!gameState.player) return;
+            
             const width = canvas.width;
             const height = canvas.height;
             
-            // Draw fishing rod
-            ctx.fillStyle = '#8B4513';
-            ctx.fillRect(width / 2 - 5, height - 100, 10, 100);
+            // Get current weapon
+            const weaponName = gameState.player.current_weapon || 'pistol';
+            const weaponSprite = textures.sprites[weaponName];
             
-            // Draw reel
-            ctx.fillStyle = '#C0C0C0';
-            ctx.beginPath();
-            ctx.arc(width / 2, height - 70, 15, 0, 2 * Math.PI);
-            ctx.fill();
+            // Calculate weapon bob based on movement
+            const bobAmount = Math.sin(Date.now() / 200) * 5;
             
-            // Draw line
-            ctx.strokeStyle = '#FFF';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(width / 2, height - 100);
-            ctx.lineTo(width / 2, height - 150);
-            ctx.stroke();
+            // Draw weapon sprite
+            if (weaponSprite && weaponSprite.complete) {
+                const weaponWidth = width / 2;
+                const weaponHeight = weaponWidth * (weaponSprite.height / weaponSprite.width);
+                
+                // Draw weapon with bob effect
+                ctx.drawImage(
+                    weaponSprite,
+                    width / 2 - weaponWidth / 2,
+                    height - weaponHeight + bobAmount,
+                    weaponWidth,
+                    weaponHeight
+                );
+            } else {
+                // Fallback if sprite isn't loaded
+                ctx.fillStyle = '#555555';
+                ctx.fillRect(width / 2 - 50, height - 100 + bobAmount, 100, 100);
+            }
             
-            // Draw lure
-            ctx.fillStyle = '#FF0000';
-            ctx.beginPath();
-            ctx.arc(width / 2, height - 150, 5, 0, 2 * Math.PI);
-            ctx.fill();
+            // Draw weapon cooldown indicator
+            if (gameState.player.weapon_cooldown > 0) {
+                const cooldownWidth = 100;
+                const cooldownHeight = 10;
+                const cooldownX = width - cooldownWidth - 20;
+                const cooldownY = height - 40;
+                
+                // Background
+                ctx.fillStyle = '#333333';
+                ctx.fillRect(cooldownX, cooldownY, cooldownWidth, cooldownHeight);
+                
+                // Get weapon cooldown from WEAPONS object
+                const weaponCooldown = WEAPONS[weaponName] ? WEAPONS[weaponName].cooldown : 20;
+                
+                // Cooldown progress
+                const cooldownPercent = gameState.player.weapon_cooldown / weaponCooldown;
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(cooldownX, cooldownY, cooldownWidth * (1 - cooldownPercent), cooldownHeight);
+            }
         }
 
         function drawBullets() {
@@ -796,6 +911,25 @@
                 if (use3DView) {
                     try {
                         drawWalls();
+                        
+                        if (gameState.power_ups) {
+                            drawPowerUps();
+                        }
+                        
+                        if (gameState.player && gameState.player.bullets) {
+                            drawBullets();
+                        }
+                        
+                        if (gameState.fish) {
+                            drawFish();
+                        }
+                        
+                        if (gameState.player && gameState.player.explosions) {
+                            drawExplosions();
+                        }
+                        
+                        drawWeapon();
+                        drawCrosshair();
                     } catch (error) {
                         console.error("Error in 3D view:", error);
                         drawFallbackView();
@@ -806,63 +940,40 @@
                     return;
                 }
                 
-                if (gameState.power_ups) {
-                    console.log("Drawing power-ups:", gameState.power_ups.length);
-                    try {
-                        drawPowerUps();
-                    } catch (error) {
-                        console.error("Error drawing power-ups:", error);
-                    }
-                }
-                
-                if (gameState.player && gameState.player.bullets) {
-                    console.log("Drawing bullets:", gameState.player.bullets.length);
-                    try {
-                        drawBullets();
-                    } catch (error) {
-                        console.error("Error drawing bullets:", error);
-                    }
-                }
-                
-                if (gameState.fish) {
-                    console.log("Drawing fish:", gameState.fish.length);
-                    try {
-                        drawFish();
-                    } catch (error) {
-                        console.error("Error drawing fish:", error);
-                    }
-                }
-                
-                if (gameState.player && gameState.player.explosions) {
-                    console.log("Drawing explosions:", gameState.player.explosions.length);
-                    try {
-                        drawExplosions();
-                    } catch (error) {
-                        console.error("Error drawing explosions:", error);
-                    }
-                }
-                
-                try {
-                    drawWeapon();
-                } catch (error) {
-                    console.error("Error drawing weapon:", error);
-                }
-                
-                if (gameState.player && gameState.player.power_ups) {
-                    console.log("Drawing power-up HUD:", gameState.player.power_ups.length);
-                    try {
-                        drawPowerUpHUD();
-                    } catch (error) {
-                        console.error("Error drawing power-up HUD:", error);
-                    }
-                }
-                
-                // Draw crosshair
-                drawCrosshair();
-                
                 // Update UI
                 document.getElementById('score').textContent = `Score: ${gameState.score}`;
-                document.getElementById('ammo').textContent = `Lure Power: ${gameState.player.lure_power.toFixed(1)}x`;
+                
+                // Update health bar
+                const healthPercent = gameState.player.health / 100;
+                document.getElementById('healthFill').style.width = `${healthPercent * 100}%`;
+                
+                // Update ammo display
+                if (gameState.player.ammo) {
+                    document.getElementById('bulletAmmo').textContent = gameState.player.ammo.bullets || 0;
+                    document.getElementById('shellAmmo').textContent = gameState.player.ammo.shells || 0;
+                    document.getElementById('cellAmmo').textContent = gameState.player.ammo.cells || 0;
+                }
+                
+                // Update weapon buttons
+                document.querySelectorAll('.weapon-btn').forEach(btn => {
+                    const weapon = btn.dataset.weapon;
+                    
+                    // Disable buttons for weapons the player doesn't have
+                    if (gameState.player.weapons && !gameState.player.weapons.includes(weapon)) {
+                        btn.disabled = true;
+                        btn.style.opacity = 0.5;
+                    } else {
+                        btn.disabled = false;
+                        btn.style.opacity = 1;
+                    }
+                    
+                    // Highlight the current weapon
+                    if (weapon === gameState.player.current_weapon) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
                 
                 if (gameState.game_over) {
                     document.getElementById('gameOver').style.display = 'block';
@@ -1443,6 +1554,69 @@
                 console.log("No fish to hit");
             }
         }
+
+        // Add weapon switching function
+        function switchWeapon(weaponName) {
+            if (!gameState.player.weapons.includes(weaponName)) {
+                console.log(`Don't have weapon: ${weaponName}`);
+                return;
+            }
+            
+            console.log(`Switching to weapon: ${weaponName}`);
+            
+            fetch('/switch-weapon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ weapon: weaponName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Weapon switched:", data);
+                updateGame(data);
+                
+                // Update weapon button UI
+                document.querySelectorAll('.weapon-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.weapon === weaponName) {
+                        btn.classList.add('active');
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error switching weapon:', error);
+                
+                // Update locally if server request fails
+                gameState.player.current_weapon = weaponName;
+                drawGame();
+                
+                // Update weapon button UI
+                document.querySelectorAll('.weapon-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.weapon === weaponName) {
+                        btn.classList.add('active');
+                    }
+                });
+            });
+        }
+
+        // Add event listeners for weapon buttons
+        document.querySelectorAll('.weapon-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchWeapon(btn.dataset.weapon);
+            });
+        });
+
+        // Add keyboard shortcuts for weapon switching
+        document.addEventListener('keydown', function(event) {
+            // Number keys 1-5 for weapon selection
+            if (event.key >= '1' && event.key <= '5') {
+                const weapons = ['pistol', 'shotgun', 'chaingun', 'plasma', 'bfg'];
+                const weaponIndex = parseInt(event.key) - 1;
+                if (weaponIndex < weapons.length) {
+                    switchWeapon(weapons[weaponIndex]);
+                }
+            }
+        });
 
         setupControls();
         resetGame();
