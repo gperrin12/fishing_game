@@ -582,6 +582,7 @@ def change_lure():
 
 @app.route('/move', methods=['POST'])
 def move():
+    print("Move request received")
     if game.game_over:
         return jsonify(game.get_state())
 
@@ -590,6 +591,8 @@ def move():
     shoot = data.get('shoot', False)
     amount = data.get('amount', 1)
     
+    print(f"Move data: direction={direction}, shoot={shoot}, amount={amount}")
+    
     if direction:
         game.move_player(direction, amount)
     
@@ -597,7 +600,9 @@ def move():
         game.shoot()
     
     game.update()
-    return jsonify(game.get_state())
+    state = game.get_state()
+    print(f"Move state: {state}")
+    return jsonify(state)
 
 def update_fish_positions():
     for fish in game_state['fish'][:]:
@@ -679,10 +684,13 @@ def update_boss_position():
 
 @app.route('/reset', methods=['POST'])
 def reset():
+    print("Reset request received")
     if game.game_over:
         save_high_score(game.score)
     game.reset()
-    return jsonify(game.get_state())
+    state = game.get_state()
+    print(f"Reset state: {state}")
+    return jsonify(state)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

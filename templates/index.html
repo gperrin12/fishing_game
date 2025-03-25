@@ -139,6 +139,8 @@
     <audio id="hitSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3" preload="auto"></audio>
 
     <script>
+        console.log("Script starting...");
+        
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         let gameInterval;
@@ -279,44 +281,60 @@
         }
 
         function drawWalls() {
+            console.log("Drawing walls...");
             const width = canvas.width;
             const height = canvas.height;
             
             // Draw sky
-            ctx.fillStyle = '#87CEEB';
-            ctx.fillRect(0, 0, width, height / 2);
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, height/2);
+            skyGradient.addColorStop(0, "#87CEEB");
+            skyGradient.addColorStop(1, "#E0F7FA");
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, width, height/2);
             
             // Draw ground/water
-            ctx.fillStyle = '#00a6ed';
-            ctx.fillRect(0, height / 2, width, height / 2);
+            const groundGradient = ctx.createLinearGradient(0, height/2, 0, height);
+            groundGradient.addColorStop(0, "#0077be");
+            groundGradient.addColorStop(1, "#005a87");
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, height/2, width, height/2);
             
-            // Cast rays for each column of the screen
-            for (let x = 0; x < width; x++) {
-                // Calculate ray position and direction
-                const cameraX = 2 * x / width - 1; // x-coordinate in camera space
-                const rayAngle = gameState.player.angle + Math.atan(cameraX * Math.tan(player.fov / 2));
+            // Draw walls
+            const numRays = width;
+            const rayWidth = width / numRays;
+            
+            for (let x = 0; x < numRays; x++) {
+                // Calculate ray angle
+                const rayAngle = gameState.player.angle - player.fov/2 + (x / numRays) * player.fov;
                 
-                const ray = castRay(rayAngle);
+                // Cast ray
+                const result = castRay(rayAngle);
                 
-                // Calculate height of line to draw on screen
-                let lineHeight = Math.floor(height / ray.distance);
-                
-                // Calculate lowest and highest pixel to fill in current stripe
-                let drawStart = Math.max(0, Math.floor(-lineHeight / 2 + height / 2));
-                let drawEnd = Math.min(height - 1, Math.floor(lineHeight / 2 + height / 2));
-                
-                // Choose wall color based on side
-                let wallColor;
-                if (ray.side === 0) {
-                    wallColor = '#006400'; // Dark green for x-side walls
-                } else {
-                    wallColor = '#004d00'; // Darker green for y-side walls
+                if (!result) {
+                    console.error("Ray casting failed for angle:", rayAngle);
+                    continue;
                 }
                 
-                // Draw the wall slice
+                // Calculate wall height
+                const wallDist = result.distance;
+                const wallHeight = Math.min(height, height / wallDist * 2);
+                
+                // Draw wall
+                const wallY = (height - wallHeight) / 2;
+                
+                // Determine wall color based on orientation
+                let wallColor;
+                if (result.side === 0) {
+                    wallColor = result.stepX > 0 ? "#228B22" : "#006400"; // Green for X walls
+                } else {
+                    wallColor = result.stepY > 0 ? "#8B4513" : "#A0522D"; // Brown for Y walls
+                }
+                
                 ctx.fillStyle = wallColor;
-                ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+                ctx.fillRect(x * rayWidth, wallY, rayWidth + 1, wallHeight);
             }
+            
+            console.log("Walls drawn");
         }
 
         function drawFish() {
@@ -739,29 +757,80 @@
         }
 
         function drawGame() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            drawWalls();
-            drawPowerUps();
-            drawBullets();
-            drawFish();
-            drawExplosions();
-            drawWeapon();
-            drawPowerUpHUD();
-            
-            // Update UI
-            document.getElementById('score').textContent = `Score: ${gameState.score}`;
-            document.getElementById('ammo').textContent = `Lure Power: ${gameState.player.lure_power.toFixed(1)}x`;
-            
-            if (gameState.game_over) {
-                document.getElementById('gameOver').style.display = 'block';
-                clearInterval(gameInterval);
+            try {
+                console.log("Drawing game...");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                drawWalls();
+                
+                if (gameState.power_ups) {
+                    console.log("Drawing power-ups:", gameState.power_ups.length);
+                    drawPowerUps();
+                }
+                
+                if (gameState.player && gameState.player.bullets) {
+                    console.log("Drawing bullets:", gameState.player.bullets.length);
+                    drawBullets();
+                }
+                
+                if (gameState.fish) {
+                    console.log("Drawing fish:", gameState.fish.length);
+                    drawFish();
+                }
+                
+                if (gameState.player && gameState.player.explosions) {
+                    console.log("Drawing explosions:", gameState.player.explosions.length);
+                    drawExplosions();
+                }
+                
+                drawWeapon();
+                
+                if (gameState.player && gameState.player.power_ups) {
+                    console.log("Drawing power-up HUD:", gameState.player.power_ups.length);
+                    drawPowerUpHUD();
+                }
+                
+                // Update UI
+                document.getElementById('score').textContent = `Score: ${gameState.score}`;
+                document.getElementById('ammo').textContent = `Lure Power: ${gameState.player.lure_power.toFixed(1)}x`;
+                
+                if (gameState.game_over) {
+                    document.getElementById('gameOver').style.display = 'block';
+                    clearInterval(gameInterval);
+                }
+                
+                console.log("Game drawn successfully");
+            } catch (error) {
+                console.error("Error drawing game:", error);
             }
         }
 
         function updateGame(newState) {
             console.log("Received game state:", newState);
+            if (!newState) {
+                console.error("Game state is null or undefined!");
+                return;
+            }
+            
             gameState = newState;
+            
+            // Check if critical properties exist
+            if (!gameState.player) {
+                console.error("Player object missing in game state!");
+                return;
+            }
+            
+            if (!gameState.fish) {
+                console.error("Fish array missing in game state!");
+                return;
+            }
+            
+            if (!gameState.power_ups) {
+                console.error("Power-ups array missing in game state!");
+                return;
+            }
+            
+            console.log("Drawing game with state:", gameState);
             drawGame();
         }
 
@@ -851,21 +920,33 @@
         }
 
         function resetGame() {
+            console.log("Resetting game...");
             document.getElementById('gameOver').style.display = 'none';
-            fetch('/reset', { method: 'POST' })
-                .then(response => response.json())
-                .then(updateGame);
             
-            clearInterval(gameInterval);
-            gameInterval = setInterval(() => {
-                fetch('/move', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({})
+            fetch('/reset', { method: 'POST' })
+                .then(response => {
+                    console.log("Reset response received");
+                    return response.json();
                 })
-                .then(response => response.json())
-                .then(updateGame);
-            }, 50);
+                .then(data => {
+                    console.log("Reset data:", data);
+                    updateGame(data);
+                    
+                    // Set up the game interval
+                    console.log("Setting up game interval");
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(() => {
+                        fetch('/move', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({})
+                        })
+                        .then(response => response.json())
+                        .then(updateGame)
+                        .catch(error => console.error('Error in game interval:', error));
+                    }, 50);
+                })
+                .catch(error => console.error('Error resetting game:', error));
         }
 
         setupControls();
