@@ -899,62 +899,101 @@
         // Global variable to track view mode
         let use3DView = true;
 
-        // Setup toggle view functionality
-        function setupToggleView() {
+        // Function to toggle between 3D and 2D views
+        function toggleView() {
+            console.log("Toggle view function called");
+            use3DView = !use3DView;
+            console.log(`View toggled: ${use3DView ? '3D' : '2D'} view`);
+            
+            // Update button text
+            const toggleBtn = document.getElementById('toggleViewBtn');
+            if (toggleBtn) {
+                toggleBtn.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
+            }
+            
+            // Force redraw
+            if (gameState) {
+                drawGame();
+            }
+        }
+
+        // Function to set up the toggle view button
+        function setupToggleViewButton() {
             console.log("Setting up toggle view button");
             const toggleBtn = document.getElementById('toggleViewBtn');
             
-            // Set initial button text
-            toggleBtn.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
-            
-            // Add event listener
-            toggleBtn.addEventListener('click', function() {
-                console.log("Toggle view button clicked");
-                use3DView = !use3DView;
-                console.log(`View toggled: ${use3DView ? '3D' : '2D'} view`);
+            if (toggleBtn) {
+                // Remove any existing event listeners
+                const newToggleBtn = toggleBtn.cloneNode(true);
+                toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
                 
-                // Update button text
-                this.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
+                // Set initial button text
+                newToggleBtn.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
                 
-                // Force redraw
-                drawGame();
-            });
+                // Add event listener
+                newToggleBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    console.log("Toggle view button clicked");
+                    toggleView();
+                });
+            } else {
+                console.error("Toggle view button not found!");
+            }
         }
+
+        // Call this function after the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setupToggleViewButton();
+        });
 
         // Update the drawGame function to properly handle the view mode
         function drawGame() {
             try {
                 console.log(`Drawing game in ${use3DView ? '3D' : '2D'} mode...`);
+                
+                // Clear the canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 if (use3DView) {
                     // 3D view
+                    console.log("Drawing 3D view");
+                    
+                    // Draw walls
                     drawWalls();
                     
-                    if (gameState.fish) {
+                    // Draw fish
+                    if (gameState.fish && gameState.fish.length > 0) {
                         drawFish();
                     }
                     
-                    if (gameState.player && gameState.player.bullets) {
+                    // Draw bullets
+                    if (gameState.player && gameState.player.bullets && gameState.player.bullets.length > 0) {
                         drawBullets();
                     }
                     
-                    if (gameState.player && gameState.player.explosions) {
+                    // Draw explosions
+                    if (gameState.player && gameState.player.explosions && gameState.player.explosions.length > 0) {
                         drawExplosions();
                     }
                     
-                    if (gameState.power_ups) {
+                    // Draw power-ups
+                    if (gameState.power_ups && gameState.power_ups.length > 0) {
                         drawPowerUps();
                     }
                     
-                    if (gameState.pickups) {
+                    // Draw pickups
+                    if (gameState.pickups && gameState.pickups.length > 0) {
                         drawPickups();
                     }
                     
+                    // Draw weapon
                     drawWeapon();
+                    
+                    // Draw crosshair
                     drawCrosshair();
                 } else {
                     // 2D top-down view
+                    console.log("Drawing 2D view");
                     draw2DView();
                 }
                 
@@ -972,7 +1011,13 @@
             } catch (error) {
                 console.error("Error drawing game:", error);
                 console.error(error.stack);
-                draw2DView(); // Fallback to 2D view on error
+                
+                // Fallback to a simple error message
+                ctx.fillStyle = '#ff0000';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Error drawing game', canvas.width / 2, canvas.height / 2);
+                ctx.fillText('Check console for details', canvas.width / 2, canvas.height / 2 + 30);
             }
         }
 
@@ -1691,7 +1736,7 @@
         // Initialize everything
         function initializeGame() {
             setupControls();
-            setupToggleView();
+            setupToggleViewButton();
             setupSpawnFishButton();
             resetGame();
             console.log("Game initialized");

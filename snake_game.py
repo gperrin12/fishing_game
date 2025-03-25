@@ -416,13 +416,18 @@ class Game:
             weapon = WEAPONS[weapon_name]
             ammo_type = weapon['ammo_type']
             
-            # Check if player has ammo
-            if self.player['ammo'][ammo_type] <= 0:
-                print(f"Out of {ammo_type}")
+            # Check if player has ammo - make sure ammo is a dictionary with numeric values
+            if isinstance(self.player['ammo'], dict) and ammo_type in self.player['ammo']:
+                ammo_count = self.player['ammo'][ammo_type]
+                if isinstance(ammo_count, int) and ammo_count <= 0:
+                    print(f"Out of {ammo_type}")
+                    return False
+                
+                # Consume ammo
+                self.player['ammo'][ammo_type] -= 1
+            else:
+                print("Invalid ammo structure")
                 return False
-            
-            # Consume ammo
-            self.player['ammo'][ammo_type] -= 1
             
             # Set weapon cooldown
             self.player['weapon_cooldown'] = weapon['cooldown']
