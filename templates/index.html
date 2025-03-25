@@ -135,6 +135,9 @@
         <button class="control-btn" id="resetBtn">New Game</button>
     </div>
 
+    <audio id="splashSound" src="https://assets.mixkit.co/sfx/preview/mixkit-water-splash-1295.mp3" preload="auto"></audio>
+    <audio id="hitSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3" preload="auto"></audio>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -336,11 +339,20 @@
                 while (fishAngle - gameState.player.angle > Math.PI) fishAngle -= 2 * Math.PI;
                 while (fishAngle - gameState.player.angle < -Math.PI) fishAngle += 2 * Math.PI;
                 
+                // Calculate fish distance
+                const fishDist = Math.sqrt(dx * dx + dy * dy);
+                
+                // Play splash sound occasionally for nearby fish
+                if (fishDist < 8 && Math.random() < 0.001) {
+                    const splashSound = document.getElementById('splashSound');
+                    // Adjust volume based on distance
+                    splashSound.volume = Math.min(1.0, 8 / fishDist) * 0.3;
+                    splashSound.currentTime = 0;
+                    splashSound.play().catch(e => console.log("Audio play failed:", e));
+                }
+                
                 // Check if fish is in field of view
                 if (Math.abs(fishAngle - gameState.player.angle) < player.fov / 2) {
-                    // Calculate fish distance
-                    const fishDist = Math.sqrt(dx * dx + dy * dy);
-                    
                     // Calculate fish size based on distance
                     const fishSize = Math.min(height / 3, 5000 / fishDist);
                     
@@ -455,7 +467,15 @@
             const width = canvas.width;
             const height = canvas.height;
             
-            gameState.player.explosions.forEach(explosion => {
+            gameState.player.explosions.forEach((explosion, index) => {
+                // Play hit sound for new explosions
+                if (explosion.time === 10 && index === 0) {
+                    const hitSound = document.getElementById('hitSound');
+                    hitSound.volume = 0.3;
+                    hitSound.currentTime = 0;
+                    hitSound.play().catch(e => console.log("Audio play failed:", e));
+                }
+                
                 // Calculate explosion position relative to player
                 const dx = explosion.x - gameState.player.x;
                 const dy = explosion.y - gameState.player.y;

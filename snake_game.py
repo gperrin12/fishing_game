@@ -190,6 +190,7 @@ class Game:
         for _ in range(count):
             # Find a valid position (not in a wall and not too close to player)
             while True:
+                # Place fish randomly throughout the map
                 x = random.uniform(1, len(MAP[0]) - 2)
                 y = random.uniform(1, len(MAP) - 2)
                 
@@ -197,9 +198,9 @@ class Game:
                 if MAP[int(y)][int(x)] != 0:
                     continue
                 
-                # Check if too close to player
+                # Make sure fish aren't too close to the player
                 dist = math.sqrt((x - self.player['x'])**2 + (y - self.player['y'])**2)
-                if dist < 3:
+                if dist < 5:  # Increased minimum distance
                     continue
                 
                 break
@@ -210,7 +211,10 @@ class Game:
                 'y': y,
                 'type': fish_type,
                 'health': FISH_TYPES[fish_type]['health'],
-                'direction': random.uniform(0, 2 * math.pi)
+                'direction': random.uniform(0, 2 * math.pi),
+                'speed': FISH_TYPES[fish_type]['speed'] * random.uniform(0.8, 1.2),  # Randomize speed a bit
+                'state': 'patrol',  # Fish state: patrol, chase, flee
+                'state_timer': random.randint(50, 150)  # Time before changing state
             })
     
     def move_player(self, direction, amount=1):
@@ -333,22 +337,65 @@ class Game:
         
         # Move fish
         for fish in self.fish[:]:
-            # Occasionally change direction
-            if random.random() < 0.02:
-                fish['direction'] = random.uniform(0, 2 * math.pi)
+            # Update fish state
+            fish['state_timer'] -= 1
+            if fish['state_timer'] <= 0:
+                # Change state
+                if fish['state'] == 'patrol':
+                    # 20% chance to chase player if close enough
+                    dx = fish['x'] - self.player['x']
+                    dy = fish['y'] - self.player['y']
+                    dist = math.sqrt(dx**2 + dy**2)
+                    
+                    if dist < 8 and random.random() < 0.2:
+                        fish['state'] = 'chase'
+                        fish['state_timer'] = random.randint(30, 70)
+                    else:
+                        # Just change direction
+                        fish['direction'] = random.uniform(0, 2 * math.pi)
+                        fish['state_timer'] = random.randint(50, 150)
+                
+                elif fish['state'] == 'chase':
+                    # Go back to patrol
+                    fish['state'] = 'patrol'
+                    fish['state_timer'] = random.randint(50, 150)
             
-            # Move fish in its direction
-            speed = FISH_TYPES[fish['type']]['speed']
-            new_x = fish['x'] + math.cos(fish['direction']) * speed
-            new_y = fish['y'] + math.sin(fish['direction']) * speed
+            # Move fish based on state
+            if fish['state'] == 'patrol':
+                # Occasionally change direction
+                if random.random() < 0.01:
+                    fish['direction'] = random.uniform(0, 2 * math.pi)
+                
+                # Move fish in its direction
+                speed = fish['speed']
+                new_x = fish['x'] + math.cos(fish['direction']) * speed
+                new_y = fish['y'] + math.sin(fish['direction']) * speed
+                
+            elif fish['state'] == 'chase':
+                # Calculate direction to player
+                dx = self.player['x'] - fish['x']
+                dy = self.player['y'] - fish['y']
+                angle = math.atan2(dy, dx)
+                
+                # Add some randomness to chase
+                angle += random.uniform(-0.2, 0.2)
+                
+                # Move toward player
+                speed = fish['speed'] * 1.5  # Faster when chasing
+                new_x = fish['x'] + math.cos(angle) * speed
+                new_y = fish['y'] + math.sin(angle) * speed
+                
+                # Update direction for rendering
+                fish['direction'] = angle
             
             # Check if new position is valid
             if self.is_valid_position(new_x, new_y):
                 fish['x'] = new_x
                 fish['y'] = new_y
             else:
-                # If not valid, reverse direction
-                fish['direction'] += math.pi
+                # If not valid, bounce off wall
+                fish['direction'] += math.pi + random.uniform(-0.5, 0.5)
+                fish['state'] = 'patrol'  # Go back to patrol after hitting wall
             
             # Check if fish is too close to player
             dx = fish['x'] - self.player['x']
@@ -359,8 +406,8 @@ class Game:
                 # Fish attacks player
                 self.game_over = True
         
-        # Spawn new fish occasionally
-        if random.random() < 0.01 and len(self.fish) < 10:
+        # Spawn new fish occasionally, but not too close to player
+        if random.random() < 0.005 and len(self.fish) < 15:  # Increased max fish
             self.spawn_fish(1)
         
         # Check if player is out of lures and no fish are left
