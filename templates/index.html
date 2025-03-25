@@ -401,11 +401,110 @@
             ctx.fill();
         }
 
+        function drawBullets() {
+            if (!gameState.player.bullets) return;
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            gameState.player.bullets.forEach(bullet => {
+                // Calculate bullet position relative to player
+                const dx = bullet.x - gameState.player.x;
+                const dy = bullet.y - gameState.player.y;
+                
+                // Calculate angle to bullet
+                let bulletAngle = Math.atan2(dy, dx);
+                
+                // Normalize angles
+                while (bulletAngle - gameState.player.angle > Math.PI) bulletAngle -= 2 * Math.PI;
+                while (bulletAngle - gameState.player.angle < -Math.PI) bulletAngle += 2 * Math.PI;
+                
+                // Check if bullet is in field of view
+                if (Math.abs(bulletAngle - gameState.player.angle) < player.fov / 2) {
+                    // Calculate bullet distance
+                    const bulletDist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Calculate bullet size based on distance
+                    const bulletSize = Math.min(10, 200 / bulletDist);
+                    
+                    // Calculate screen position
+                    const angleToCenter = bulletAngle - gameState.player.angle;
+                    const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
+                    const screenY = height / 2;
+                    
+                    // Draw bullet
+                    ctx.fillStyle = '#FF0000';
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, bulletSize, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Add a glow effect
+                    ctx.shadowColor = '#FF6666';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, bulletSize * 1.5, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+        }
+
+        function drawExplosions() {
+            if (!gameState.player.explosions) return;
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            gameState.player.explosions.forEach(explosion => {
+                // Calculate explosion position relative to player
+                const dx = explosion.x - gameState.player.x;
+                const dy = explosion.y - gameState.player.y;
+                
+                // Calculate angle to explosion
+                let explosionAngle = Math.atan2(dy, dx);
+                
+                // Normalize angles
+                while (explosionAngle - gameState.player.angle > Math.PI) explosionAngle -= 2 * Math.PI;
+                while (explosionAngle - gameState.player.angle < -Math.PI) explosionAngle += 2 * Math.PI;
+                
+                // Check if explosion is in field of view
+                if (Math.abs(explosionAngle - gameState.player.angle) < player.fov / 2) {
+                    // Calculate explosion distance
+                    const explosionDist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Calculate explosion size based on distance and time
+                    const timeRatio = explosion.time / 10; // 10 is max time
+                    const explosionSize = Math.min(50, 1000 / explosionDist) * (1 - timeRatio * 0.5);
+                    
+                    // Calculate screen position
+                    const angleToCenter = explosionAngle - gameState.player.angle;
+                    const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
+                    const screenY = height / 2;
+                    
+                    // Draw explosion
+                    const gradient = ctx.createRadialGradient(
+                        screenX, screenY, 0,
+                        screenX, screenY, explosionSize
+                    );
+                    gradient.addColorStop(0, 'rgba(255, 255, 0, 0.8)');
+                    gradient.addColorStop(0.5, 'rgba(255, 100, 0, 0.6)');
+                    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, explosionSize, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+        }
+
         function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             drawWalls();
+            drawBullets();
             drawFish();
+            drawExplosions();
             drawWeapon();
             
             // Update UI

@@ -257,39 +257,80 @@ class Game:
         
         self.player['lures'] -= 1
         
-        # Check if any fish is in front of the player
-        for i, fish in enumerate(self.fish):
-            # Calculate angle to fish
-            dx = fish['x'] - self.player['x']
-            dy = fish['y'] - self.player['y']
-            fish_angle = math.atan2(dy, dx)
+        # Create a new bullet
+        bullet = {
+            'x': self.player['x'],
+            'y': self.player['y'],
+            'angle': self.player['angle'],
+            'speed': 0.2,
+            'distance': 0,
+            'max_distance': 10,
+            'active': True
+        }
+        
+        # Add bullet to player
+        if 'bullets' not in self.player:
+            self.player['bullets'] = []
+        
+        self.player['bullets'].append(bullet)
+        return True
+    
+    def update(self):
+        # Update bullets
+        if 'bullets' not in self.player:
+            self.player['bullets'] = []
+        
+        # Track explosions
+        if 'explosions' not in self.player:
+            self.player['explosions'] = []
+        
+        # Update existing explosions
+        for explosion in self.player['explosions'][:]:
+            explosion['time'] -= 1
+            if explosion['time'] <= 0:
+                self.player['explosions'].remove(explosion)
+        
+        # Update bullets and check for hits
+        for bullet in self.player['bullets'][:]:
+            # Move bullet
+            bullet['x'] += math.cos(bullet['angle']) * bullet['speed']
+            bullet['y'] += math.sin(bullet['angle']) * bullet['speed']
+            bullet['distance'] += bullet['speed']
             
-            # Normalize angles
-            while fish_angle - self.player['angle'] > math.pi:
-                fish_angle -= 2 * math.pi
-            while fish_angle - self.player['angle'] < -math.pi:
-                fish_angle += 2 * math.pi
+            # Check if bullet hit a wall
+            if not self.is_valid_position(bullet['x'], bullet['y']) or bullet['distance'] >= bullet['max_distance']:
+                self.player['bullets'].remove(bullet)
+                continue
             
-            # Check if fish is in field of view (within 15 degrees)
-            if abs(fish_angle - self.player['angle']) < 15 * math.pi / 180:
-                # Calculate distance to fish
+            # Check if bullet hit a fish
+            for i, fish in enumerate(self.fish):
+                dx = fish['x'] - bullet['x']
+                dy = fish['y'] - bullet['y']
                 dist = math.sqrt(dx**2 + dy**2)
                 
-                # Check if fish is close enough
-                if dist < 5:
+                if dist < 0.5:  # Hit radius
                     # Hit the fish
                     fish['health'] -= 1
+                    
+                    # Create explosion
+                    self.player['explosions'].append({
+                        'x': bullet['x'],
+                        'y': bullet['y'],
+                        'size': 0.5,
+                        'time': 10  # frames the explosion lasts
+                    })
+                    
+                    # Remove bullet
+                    self.player['bullets'].remove(bullet)
+                    
                     if fish['health'] <= 0:
                         # Fish is caught
                         self.score += FISH_TYPES[fish['type']]['points']
                         self.fish.pop(i)
                         # Spawn a new fish
                         self.spawn_fish(1)
-                    return True
+                    break
         
-        return False
-    
-    def update(self):
         # Move fish
         for fish in self.fish[:]:
             # Occasionally change direction
