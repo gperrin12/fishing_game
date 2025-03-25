@@ -34,8 +34,6 @@ MAP = [
     [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
     [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
@@ -299,7 +297,13 @@ class Game:
                 'cells': 0
             },
             'weapon_cooldown': 0,
-            'power_ups': []
+            'bullets': [],
+            'explosions': [],
+            'power_ups': [],
+            'lures': [],  # Add this for backward compatibility
+            'lure_power': 1.0,  # Add this for backward compatibility
+            'lure_speed': 1.0,  # Add this for backward compatibility
+            'casting_speed': 1.0  # Add this for backward compatibility
         }
         self.fish = []
         self.score = 0
@@ -310,43 +314,56 @@ class Game:
         self.spawn_fish(5)
         
         # Spawn initial power-ups
-        self.spawn_power_ups(5)
-    
-    def spawn_fish(self, count):
-        # Limit the number of fish that can exist at once
-        if len(self.fish) >= 3:  # Reduced max fish count to 3
-            return
+        self.spawn_power_ups(3)
         
+        # Spawn initial weapon pickup
+        self.spawn_weapon_pickup()
+        
+        # Spawn initial ammo pickup
+        self.spawn_ammo_pickup()
+        
+        print("Game reset complete")
+    
+    def spawn_fish(self, count=1):
         for _ in range(count):
-            # Find a valid position (not in a wall and not too close to player)
-            while True:
-                # Place fish randomly throughout the map
-                x = random.uniform(1, len(MAP[0]) - 2)
-                y = random.uniform(1, len(MAP) - 2)
-                
-                # Check if position is in a wall
-                if MAP[int(y)][int(x)] != 0:
-                    continue
-                
-                # Make sure fish aren't too close to the player
-                dist = math.sqrt((x - self.player['x'])**2 + (y - self.player['y'])**2)
-                if dist < 8:  # Increased minimum distance even more
-                    continue
-                
-                break
-            
+            # Choose a random fish type
             fish_type = random.choice(list(FISH_TYPES.keys()))
-            self.fish.append({
+            
+            # Get fish properties
+            fish_props = FISH_TYPES[fish_type]
+            
+            # Find a valid spawn position
+            valid_position = False
+            x, y = 0, 0
+            
+            while not valid_position:
+                # Spawn fish at a random position away from the player
+                angle = random.uniform(0, 2 * math.pi)
+                distance = random.uniform(5, 10)  # Spawn 5-10 units away from player
+                
+                x = self.player['x'] + math.cos(angle) * distance
+                y = self.player['y'] + math.sin(angle) * distance
+                
+                # Check if position is valid (not in a wall)
+                if self.is_valid_position(x, y):
+                    valid_position = True
+            
+            # Create the fish
+            fish = {
                 'x': x,
                 'y': y,
                 'type': fish_type,
-                'health': FISH_TYPES[fish_type]['health'],
+                'speed': fish_props['speed'],
+                'health': fish_props['health'],
                 'direction': random.uniform(0, 2 * math.pi),
-                'speed': FISH_TYPES[fish_type]['speed'] * random.uniform(0.8, 1.2),
                 'state': 'patrol',
-                'state_timer': random.randint(50, 150),
-                'spawn_time': time.time()  # Track when fish was spawned
-            })
+                'state_timer': 0
+            }
+            
+            self.fish.append(fish)
+            print(f"Spawned {fish_type} at ({x:.2f}, {y:.2f})")
+        
+        return True
     
     def move_player(self, direction, amount=1):
         move_speed = 0.1
@@ -388,31 +405,55 @@ class Game:
     
     def shoot(self):
         # Check if weapon is on cooldown
-        if self.player['weapon_cooldown'] > 0:
+        if 'weapon_cooldown' in self.player and self.player['weapon_cooldown'] > 0:
             return False
         
-        weapon = WEAPONS[self.player['current_weapon']]
-        ammo_type = weapon['ammo_type']
+        # Get current weapon
+        weapon_name = self.player.get('current_weapon', 'pistol')
         
-        # Check if player has ammo
-        if self.player['ammo'][ammo_type] <= 0:
-            return False
-        
-        # Consume ammo
-        self.player['ammo'][ammo_type] -= 1
-        
-        # Set weapon cooldown
-        self.player['weapon_cooldown'] = weapon['cooldown']
-        
-        # Handle different weapon types
-        if 'pellets' in weapon:  # Shotgun-like
-            for _ in range(weapon['pellets']):
-                spread = random.uniform(-weapon['spread'] * 0.01, weapon['spread'] * 0.01)
-                self.create_bullet(self.player['angle'] + spread, weapon['damage'], weapon['speed'])
-        elif self.player['current_weapon'] == 'bfg':  # BFG-like
-            self.create_bullet(self.player['angle'], weapon['damage'], weapon['speed'], explosion_radius=weapon['explosion_radius'])
-        else:  # Regular weapon
-            self.create_bullet(self.player['angle'], weapon['damage'], weapon['speed'])
+        # Check if we have the WEAPONS dictionary
+        if 'WEAPONS' in globals() and weapon_name in WEAPONS:
+            weapon = WEAPONS[weapon_name]
+            ammo_type = weapon['ammo_type']
+            
+            # Check if player has ammo
+            if self.player['ammo'][ammo_type] <= 0:
+                print(f"Out of {ammo_type}")
+                return False
+            
+            # Consume ammo
+            self.player['ammo'][ammo_type] -= 1
+            
+            # Set weapon cooldown
+            self.player['weapon_cooldown'] = weapon['cooldown']
+            
+            # Handle different weapon types
+            if 'pellets' in weapon:  # Shotgun-like
+                for _ in range(weapon['pellets']):
+                    spread = random.uniform(-weapon['spread'] * 0.01, weapon['spread'] * 0.01)
+                    self.create_bullet(self.player['angle'] + spread, weapon['damage'], weapon['speed'])
+            elif weapon_name == 'bfg':  # BFG-like
+                self.create_bullet(self.player['angle'], weapon['damage'], weapon['speed'], explosion_radius=weapon.get('explosion_radius', 0))
+            else:  # Regular weapon
+                self.create_bullet(self.player['angle'], weapon['damage'], weapon['speed'])
+        else:
+            # Fallback to old fishing game logic
+            bullet = {
+                'x': self.player['x'],
+                'y': self.player['y'],
+                'angle': self.player['angle'],
+                'speed': 0.2 * self.player.get('lure_speed', 1.0),
+                'damage': 1 * self.player.get('lure_power', 1.0),
+                'distance': 0,
+                'max_distance': 10,
+                'active': True
+            }
+            
+            # Add bullet to player
+            if 'bullets' not in self.player:
+                self.player['bullets'] = []
+            
+            self.player['bullets'].append(bullet)
         
         return True
     
@@ -441,6 +482,18 @@ class Game:
         
         if 'explosions' not in self.player:
             self.player['explosions'] = []
+        
+        if 'lures' not in self.player:
+            self.player['lures'] = []
+        
+        if 'lure_power' not in self.player:
+            self.player['lure_power'] = 1.0
+        
+        if 'lure_speed' not in self.player:
+            self.player['lure_speed'] = 1.0
+        
+        if 'casting_speed' not in self.player:
+            self.player['casting_speed'] = 1.0
         
         # Update existing explosions
         for explosion in self.player['explosions'][:]:
