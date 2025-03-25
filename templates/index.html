@@ -135,6 +135,7 @@
         <button class="control-btn" id="resetBtn">New Game</button>
         <button class="control-btn" id="toggleViewBtn" style="background-color: #9c27b0;">Toggle View</button>
         <button class="control-btn" id="spawnFishBtn" style="background-color: #2196F3;">Spawn Fish</button>
+        <button class="control-btn" id="debugBtn" style="background-color: #673AB7;">Debug</button>
     </div>
 
     <audio id="splashSound" src="https://assets.mixkit.co/sfx/preview/mixkit-water-splash-1295.mp3" preload="auto"></audio>
@@ -538,7 +539,7 @@
         }
 
         function drawBullets() {
-            if (!gameState.player.bullets) return;
+            if (!gameState.player || !gameState.player.bullets) return;
             
             const width = canvas.width;
             const height = canvas.height;
@@ -561,32 +562,40 @@
                     const bulletDist = Math.sqrt(dx * dx + dy * dy);
                     
                     // Calculate bullet size based on distance
-                    const bulletSize = Math.min(10, 200 / bulletDist);
+                    const bulletSize = Math.min(height / 30, 500 / bulletDist);
                     
                     // Calculate screen position
                     const angleToCenter = bulletAngle - gameState.player.angle;
                     const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
                     const screenY = height / 2;
                     
-                    // Draw bullet
-                    ctx.fillStyle = '#FF0000';
+                    // Draw bullet with glow effect
+                    ctx.save();
+                    ctx.shadowColor = '#ffff00';
+                    ctx.shadowBlur = 15;
+                    ctx.fillStyle = '#ffff00';
                     ctx.beginPath();
                     ctx.arc(screenX, screenY, bulletSize, 0, 2 * Math.PI);
                     ctx.fill();
                     
-                    // Add a glow effect
-                    ctx.shadowColor = '#FF6666';
-                    ctx.shadowBlur = 10;
+                    // Draw bullet trail
+                    ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                    ctx.lineWidth = bulletSize / 2;
                     ctx.beginPath();
-                    ctx.arc(screenX, screenY, bulletSize * 1.5, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
+                    ctx.moveTo(screenX, screenY);
+                    ctx.lineTo(
+                        screenX - Math.cos(bulletAngle - gameState.player.angle) * bulletSize * 4,
+                        screenY - Math.sin(bulletAngle - gameState.player.angle) * bulletSize * 4
+                    );
+                    ctx.stroke();
+                    
+                    ctx.restore();
                 }
             });
         }
 
         function drawExplosions() {
-            if (!gameState.player.explosions) return;
+            if (!gameState.player || !gameState.player.explosions) return;
             
             const width = canvas.width;
             const height = canvas.height;
@@ -1306,6 +1315,51 @@
                 ctx.fillStyle = '#ff0000';
                 ctx.textAlign = 'center';
                 ctx.fillText('TARGET LOCKED', width/2, height/2 + 30);
+            }
+        }
+
+        document.getElementById('debugBtn').addEventListener('click', debugGame);
+
+        function debugGame() {
+            console.log("Debug info:");
+            console.log("Player:", gameState.player);
+            console.log("Fish:", gameState.fish);
+            console.log("Bullets:", gameState.player.bullets);
+            console.log("Power-ups:", gameState.power_ups);
+            
+            // Test shooting directly at a fish if any exist
+            if (gameState.fish && gameState.fish.length > 0) {
+                const fish = gameState.fish[0];
+                const dx = fish.x - gameState.player.x;
+                const dy = fish.y - gameState.player.y;
+                
+                // Calculate angle to fish
+                const fishAngle = Math.atan2(dy, dx);
+                
+                // Update player angle to face fish
+                gameState.player.angle = fishAngle;
+                
+                // Shoot at fish
+                console.log("Aiming at fish:", fish);
+                console.log("Angle to fish:", fishAngle);
+                
+                fetch('/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        direction: 'LOOK', 
+                        amount: (fishAngle - gameState.player.angle) / 0.05,
+                        shoot: true 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Shot at fish, new state:", data);
+                    updateGame(data);
+                })
+                .catch(error => console.error('Error in debug shoot:', error));
+            } else {
+                console.log("No fish to target");
             }
         }
 

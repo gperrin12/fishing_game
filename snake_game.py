@@ -315,15 +315,8 @@ class Game:
         if 'bullets' not in self.player:
             self.player['bullets'] = []
         
-        # Track explosions
         if 'explosions' not in self.player:
             self.player['explosions'] = []
-        
-        # Update existing explosions
-        for explosion in self.player['explosions'][:]:
-            explosion['time'] -= 1
-            if explosion['time'] <= 0:
-                self.player['explosions'].remove(explosion)
         
         # Update bullets and check for hits
         for bullet in self.player['bullets'][:]:
@@ -334,19 +327,30 @@ class Game:
             
             # Check if bullet hit a wall
             if not self.is_valid_position(bullet['x'], bullet['y']) or bullet['distance'] >= bullet['max_distance']:
+                # Create explosion at wall hit
+                self.player['explosions'].append({
+                    'x': bullet['x'],
+                    'y': bullet['y'],
+                    'size': 0.3,
+                    'time': 5  # frames the explosion lasts
+                })
                 self.player['bullets'].remove(bullet)
                 continue
             
             # Check if bullet hit a fish - IMPROVED COLLISION DETECTION
+            hit_fish = False
             for i, fish in enumerate(self.fish):
                 dx = fish['x'] - bullet['x']
                 dy = fish['y'] - bullet['y']
                 dist = math.sqrt(dx**2 + dy**2)
                 
                 # Increased hit radius to make hitting fish easier
-                if dist < 1.0:  # Increased from 0.5
+                if dist < 1.5:  # Increased from 0.5 to 1.5
                     # Hit the fish
-                    fish['health'] -= bullet.get('damage', 1) * self.player['lure_power']
+                    damage = bullet.get('damage', 1) * self.player['lure_power']
+                    fish['health'] -= damage
+                    
+                    print(f"Fish hit! Type: {fish['type']}, Health: {fish['health']}")
                     
                     # Create explosion
                     self.player['explosions'].append({
@@ -358,6 +362,7 @@ class Game:
                     
                     # Remove bullet
                     self.player['bullets'].remove(bullet)
+                    hit_fish = True
                     
                     if fish['health'] <= 0:
                         # Fish is caught
@@ -365,7 +370,11 @@ class Game:
                         self.fish.pop(i)
                         # Spawn a new fish
                         self.spawn_fish(1)
+                    
                     break
+            
+            if hit_fish:
+                continue
         
         # Move fish
         for fish in self.fish[:]:
@@ -703,6 +712,29 @@ def spawn_fish_route():
     
     state = game.get_state()
     print(f"After spawning fish: {len(state['fish'])} fish in game")
+    return jsonify(state)
+
+@app.route('/hit-fish', methods=['POST'])
+def hit_fish_route():
+    print("Hit fish request received")
+    data = request.get_json()
+    index = data.get('index', 0)
+    damage = data.get('damage', 1)
+    
+    if game.fish and len(game.fish) > index:
+        fish = game.fish[index]
+        fish['health'] -= damage
+        
+        print(f"Fish hit directly! Type: {fish['type']}, Health: {fish['health']}")
+        
+        if fish['health'] <= 0:
+            # Fish is caught
+            game.score += FISH_TYPES[fish['type']]['points']
+            game.fish.pop(index)
+            # Spawn a new fish
+            game.spawn_fish(1)
+    
+    state = game.get_state()
     return jsonify(state)
 
 if __name__ == '__main__':
