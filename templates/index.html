@@ -964,14 +964,61 @@
         }
 
         function move(direction, amount = 1) {
+            console.log(`Moving: ${direction}, amount: ${amount}`);
+            
             fetch('/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ direction: direction, amount: amount })
             })
-            .then(response => response.json())
-            .then(updateGame)
-            .catch(error => console.error('Error:', error));
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                console.log("Move response received");
+                return response.json();
+            })
+            .then(data => {
+                console.log("Move data received:", data);
+                updateGame(data);
+            })
+            .catch(error => {
+                console.error('Error in move:', error);
+                // Try to update the player position locally for better responsiveness
+                if (gameState && gameState.player) {
+                    const moveSpeed = 0.1;
+                    const rotationSpeed = 0.05;
+                    
+                    if (direction === 'FORWARD') {
+                        const newX = gameState.player.x + Math.cos(gameState.player.angle) * moveSpeed * amount;
+                        const newY = gameState.player.y + Math.sin(gameState.player.angle) * moveSpeed * amount;
+                        // Check if new position is valid (not in a wall)
+                        if (newX > 0 && newY > 0 && newX < MAP[0].length && newY < MAP.length) {
+                            if (MAP[Math.floor(newY)][Math.floor(newX)] === 0) {
+                                gameState.player.x = newX;
+                                gameState.player.y = newY;
+                            }
+                        }
+                    } else if (direction === 'BACKWARD') {
+                        const newX = gameState.player.x - Math.cos(gameState.player.angle) * moveSpeed * amount;
+                        const newY = gameState.player.y - Math.sin(gameState.player.angle) * moveSpeed * amount;
+                        if (newX > 0 && newY > 0 && newX < MAP[0].length && newY < MAP.length) {
+                            if (MAP[Math.floor(newY)][Math.floor(newX)] === 0) {
+                                gameState.player.x = newX;
+                                gameState.player.y = newY;
+                            }
+                        }
+                    } else if (direction === 'LEFT') {
+                        gameState.player.angle -= rotationSpeed * amount;
+                    } else if (direction === 'RIGHT') {
+                        gameState.player.angle += rotationSpeed * amount;
+                    } else if (direction === 'LOOK') {
+                        gameState.player.angle += rotationSpeed * amount;
+                    }
+                    
+                    drawGame();
+                }
+            });
         }
 
         function shoot() {
