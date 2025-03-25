@@ -177,14 +177,21 @@ class Game:
             'x': 2.0,
             'y': 2.0,
             'angle': 0.0,
-            'lures': 10
+            'lures': float('inf'),  # Unlimited lures
+            'lure_power': 1.0,      # Base lure power
+            'lure_speed': 1.0,      # Base lure speed
+            'power_ups': []         # Active power-ups
         }
         self.fish = []
         self.score = 0
         self.game_over = False
+        self.power_ups = []  # Power-ups in the level
         
         # Spawn initial fish
-        self.spawn_fish(5)
+        self.spawn_fish(3)
+        
+        # Spawn initial power-ups
+        self.spawn_power_ups(5)
     
     def spawn_fish(self, count):
         # Limit the number of fish that can exist at once
@@ -266,12 +273,13 @@ class Game:
         
         self.player['lures'] -= 1
         
-        # Create a new bullet
+        # Create a new bullet with current power-up effects
         bullet = {
             'x': self.player['x'],
             'y': self.player['y'],
             'angle': self.player['angle'],
-            'speed': 0.2,
+            'speed': 0.2 * self.player['lure_speed'],
+            'damage': 1 * self.player['lure_power'],
             'distance': 0,
             'max_distance': 10,
             'active': True
@@ -282,6 +290,24 @@ class Game:
             self.player['bullets'] = []
         
         self.player['bullets'].append(bullet)
+        
+        # If spread shot is active, add additional bullets
+        has_spread = any(pu['effect'] == 'spread_shot' for pu in self.player['power_ups'])
+        if has_spread:
+            # Add bullets at angles to the left and right
+            for angle_offset in [-0.2, 0.2]:
+                spread_bullet = {
+                    'x': self.player['x'],
+                    'y': self.player['y'],
+                    'angle': self.player['angle'] + angle_offset,
+                    'speed': 0.2 * self.player['lure_speed'],
+                    'damage': 1 * self.player['lure_power'],
+                    'distance': 0,
+                    'max_distance': 10,
+                    'active': True
+                }
+                self.player['bullets'].append(spread_bullet)
+        
         return True
     
     def update(self):
@@ -439,6 +465,52 @@ class Game:
             
             if not can_shoot:
                 self.game_over = True
+        
+        # Update power-ups
+        for power_up in self.power_ups[:]:
+            # Make power-ups rotate
+            power_up['rotation'] += 0.02
+            power_up['bob_offset'] += 0.05
+            
+            # Check if player collected power-up
+            dx = power_up['x'] - self.player['x']
+            dy = power_up['y'] - self.player['y']
+            dist = math.sqrt(dx**2 + dy**2)
+            
+            if dist < 0.7:  # Player is close enough to collect
+                # Apply power-up effect
+                if power_up['effect'] == 'lure_power':
+                    self.player['lure_power'] = power_up['multiplier']
+                elif power_up['effect'] == 'lure_speed':
+                    self.player['lure_speed'] = power_up['multiplier']
+                
+                # Add to active power-ups
+                self.player['power_ups'].append({
+                    'type': power_up['type'],
+                    'effect': power_up['effect'],
+                    'multiplier': power_up['multiplier'],
+                    'duration': power_up['duration'],
+                    'start_time': time.time()
+                })
+                
+                # Remove collected power-up
+                self.power_ups.remove(power_up)
+                
+                # Spawn a new power-up elsewhere
+                self.spawn_power_ups(1)
+        
+        # Update active power-ups
+        current_time = time.time()
+        for power_up in self.player['power_ups'][:]:
+            elapsed = current_time - power_up['start_time']
+            if elapsed > power_up['duration']:
+                # Power-up expired
+                if power_up['effect'] == 'lure_power':
+                    self.player['lure_power'] = 1.0
+                elif power_up['effect'] == 'lure_speed':
+                    self.player['lure_speed'] = 1.0
+                
+                self.player['power_ups'].remove(power_up)
     
     def get_state(self):
         return {
@@ -447,6 +519,43 @@ class Game:
             'score': self.score,
             'game_over': self.game_over
         }
+
+    def spawn_power_ups(self, count):
+        power_up_types = [
+            {'type': 'power', 'color': '#ff0000', 'effect': 'lure_power', 'multiplier': 2.0, 'duration': 30},
+            {'type': 'speed', 'color': '#00ff00', 'effect': 'lure_speed', 'multiplier': 1.5, 'duration': 30},
+            {'type': 'spread', 'color': '#0000ff', 'effect': 'spread_shot', 'multiplier': 3, 'duration': 20}
+        ]
+        
+        for _ in range(count):
+            # Find a valid position (not in a wall and not too close to player)
+            while True:
+                x = random.uniform(1, len(MAP[0]) - 2)
+                y = random.uniform(1, len(MAP) - 2)
+                
+                # Check if position is in a wall
+                if MAP[int(y)][int(x)] != 0:
+                    continue
+                
+                # Make sure power-up isn't too close to the player
+                dist = math.sqrt((x - self.player['x'])**2 + (y - self.player['y'])**2)
+                if dist < 5:
+                    continue
+                
+                break
+            
+            power_up_type = random.choice(power_up_types)
+            self.power_ups.append({
+                'x': x,
+                'y': y,
+                'type': power_up_type['type'],
+                'color': power_up_type['color'],
+                'effect': power_up_type['effect'],
+                'multiplier': power_up_type['multiplier'],
+                'duration': power_up_type['duration'],
+                'rotation': random.uniform(0, 2 * math.pi),
+                'bob_offset': random.uniform(0, 2 * math.pi)
+            })
 
 game = Game()
 

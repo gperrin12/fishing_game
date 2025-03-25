@@ -119,7 +119,7 @@
 </head>
 <body>
     <div id="score">Score: 0</div>
-    <div id="ammo">Lures: 10</div>
+    <div id="ammo">Lure Power: 1.0x</div>
     <div id="gameOver">Game Over! The fish have taken over the lake!</div>
     
     <div id="gameContainer">
@@ -185,11 +185,15 @@
                 x: 2,
                 y: 2,
                 angle: 0,
-                lures: 10
+                lures: 10,
+                lure_power: 1.0,
+                lure_speed: 1.0,
+                power_ups: []
             },
             fish: [],
             score: 0,
-            game_over: false
+            game_over: false,
+            power_ups: []
         };
 
         function resizeCanvas() {
@@ -605,18 +609,149 @@
             });
         }
 
+        function drawPowerUps() {
+            if (!gameState.power_ups || gameState.power_ups.length === 0) return;
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            gameState.power_ups.forEach(powerUp => {
+                // Calculate power-up position relative to player
+                const dx = powerUp.x - gameState.player.x;
+                const dy = powerUp.y - gameState.player.y;
+                
+                // Calculate angle to power-up
+                let powerUpAngle = Math.atan2(dy, dx);
+                
+                // Normalize angles
+                while (powerUpAngle - gameState.player.angle > Math.PI) powerUpAngle -= 2 * Math.PI;
+                while (powerUpAngle - gameState.player.angle < -Math.PI) powerUpAngle += 2 * Math.PI;
+                
+                // Calculate power-up distance
+                const powerUpDist = Math.sqrt(dx * dx + dy * dy);
+                
+                // Check if power-up is in field of view
+                if (Math.abs(powerUpAngle - gameState.player.angle) < player.fov / 2) {
+                    // Calculate power-up size based on distance
+                    const powerUpSize = Math.min(height / 10, 2000 / powerUpDist);
+                    
+                    // Calculate screen position
+                    const angleToCenter = powerUpAngle - gameState.player.angle;
+                    const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
+                    
+                    // Add bobbing motion
+                    const bobAmount = Math.sin(Date.now() / 500 + powerUp.bob_offset) * 10;
+                    const screenY = height / 2 + bobAmount;
+                    
+                    // Draw power-up with glow effect
+                    ctx.save();
+                    ctx.shadowColor = powerUp.color;
+                    ctx.shadowBlur = 15;
+                    
+                    // Draw rotating cube or diamond shape
+                    ctx.translate(screenX, screenY);
+                    ctx.rotate(powerUp.rotation);
+                    
+                    ctx.fillStyle = powerUp.color;
+                    ctx.beginPath();
+                    if (powerUp.type === 'power') {
+                        // Draw a star for power
+                        const spikes = 5;
+                        const outerRadius = powerUpSize;
+                        const innerRadius = powerUpSize / 2;
+                        
+                        for (let i = 0; i < spikes * 2; i++) {
+                            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                            const angle = (i * Math.PI) / spikes;
+                            const x = Math.cos(angle) * radius;
+                            const y = Math.sin(angle) * radius;
+                            
+                            if (i === 0) {
+                                ctx.moveTo(x, y);
+                            } else {
+                                ctx.lineTo(x, y);
+                            }
+                        }
+                        
+                    } else if (powerUp.type === 'speed') {
+                        // Draw a lightning bolt for speed
+                        ctx.moveTo(-powerUpSize/2, -powerUpSize);
+                        ctx.lineTo(0, 0);
+                        ctx.lineTo(-powerUpSize/2, powerUpSize);
+                        ctx.lineTo(powerUpSize/2, 0);
+                        ctx.lineTo(0, -powerUpSize/2);
+                        
+                    } else if (powerUp.type === 'spread') {
+                        // Draw a triple dot pattern for spread shot
+                        ctx.arc(-powerUpSize/2, 0, powerUpSize/4, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.arc(0, 0, powerUpSize/4, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.arc(powerUpSize/2, 0, powerUpSize/4, 0, 2 * Math.PI);
+                    }
+                    
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.restore();
+                }
+            });
+        }
+
+        function drawPowerUpHUD() {
+            if (!gameState.player.power_ups || gameState.player.power_ups.length === 0) return;
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            const iconSize = 30;
+            const padding = 10;
+            
+            // Draw active power-ups in the corner
+            gameState.player.power_ups.forEach((powerUp, index) => {
+                const x = width - iconSize - padding;
+                const y = padding + (iconSize + padding) * index;
+                
+                // Calculate remaining time
+                const elapsed = Date.now() / 1000 - powerUp.start_time;
+                const remaining = Math.max(0, powerUp.duration - elapsed);
+                const timeRatio = remaining / powerUp.duration;
+                
+                // Draw power-up icon
+                ctx.fillStyle = powerUp.type === 'power' ? '#ff0000' : 
+                                powerUp.type === 'speed' ? '#00ff00' : '#0000ff';
+                ctx.fillRect(x, y, iconSize, iconSize);
+                
+                // Draw timer bar
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x, y + iconSize + 2, iconSize * timeRatio, 3);
+                
+                // Draw icon symbol
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(
+                    powerUp.type === 'power' ? 'P' : 
+                    powerUp.type === 'speed' ? 'S' : '3',
+                    x + iconSize / 2, y + iconSize / 2
+                );
+            });
+        }
+
         function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             drawWalls();
+            drawPowerUps();
             drawBullets();
             drawFish();
             drawExplosions();
             drawWeapon();
+            drawPowerUpHUD();
             
             // Update UI
             document.getElementById('score').textContent = `Score: ${gameState.score}`;
-            document.getElementById('ammo').textContent = `Lures: ${gameState.player.lures}`;
+            document.getElementById('ammo').textContent = `Lure Power: ${gameState.player.lure_power.toFixed(1)}x`;
             
             if (gameState.game_over) {
                 document.getElementById('gameOver').style.display = 'block';
