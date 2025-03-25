@@ -300,10 +300,10 @@ class Game:
             'bullets': [],
             'explosions': [],
             'power_ups': [],
-            'lures': [],  # Add this for backward compatibility
-            'lure_power': 1.0,  # Add this for backward compatibility
-            'lure_speed': 1.0,  # Add this for backward compatibility
-            'casting_speed': 1.0  # Add this for backward compatibility
+            'lures': 10,  # Assuming 10 is the starting count of lures
+            'lure_power': 1.0,
+            'lure_speed': 1.0,
+            'casting_speed': 1.0
         }
         self.fish = []
         self.score = 0
@@ -481,6 +481,15 @@ class Game:
         self.player['bullets'].append(bullet)
     
     def update(self):
+        # Ensure lures is a list
+        if 'lures' not in self.player:
+            self.player['lures'] = []
+        
+        # Check if there are no lures and fish exist
+        if len(self.player['lures']) <= 0 and len(self.fish) > 0:
+            # Your logic here
+            pass
+
         # Make sure we have bullet and explosion arrays
         if 'bullets' not in self.player:
             self.player['bullets'] = []
