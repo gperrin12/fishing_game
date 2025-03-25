@@ -899,21 +899,17 @@
         // Global variable to track view mode
         let use3DView = true;
 
-        // Completely rewrite the toggle view functionality
+        // Setup toggle view functionality
         function setupToggleView() {
+            console.log("Setting up toggle view button");
             const toggleBtn = document.getElementById('toggleViewBtn');
             
             // Set initial button text
             toggleBtn.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
             
-            // Clear any existing event listeners
-            toggleBtn.replaceWith(toggleBtn.cloneNode(true));
-            
-            // Get the fresh button reference
-            const newToggleBtn = document.getElementById('toggleViewBtn');
-            
             // Add event listener
-            newToggleBtn.addEventListener('click', function() {
+            toggleBtn.addEventListener('click', function() {
+                console.log("Toggle view button clicked");
                 use3DView = !use3DView;
                 console.log(`View toggled: ${use3DView ? '3D' : '2D'} view`);
                 
@@ -963,16 +959,26 @@
                 }
                 
                 // Update UI elements
-                updateUI();
+                document.getElementById('score').textContent = `Score: ${gameState.score}`;
+                
+                if (gameState.player && gameState.player.health !== undefined) {
+                    document.getElementById('ammo').textContent = `Health: ${gameState.player.health}`;
+                }
+                
+                if (gameState.game_over) {
+                    document.getElementById('gameOver').style.display = 'block';
+                }
                 
             } catch (error) {
                 console.error("Error drawing game:", error);
+                console.error(error.stack);
                 draw2DView(); // Fallback to 2D view on error
             }
         }
 
         // Add a 2D top-down view function
         function draw2DView() {
+            console.log("Drawing 2D view");
             const width = canvas.width;
             const height = canvas.height;
             const cellSize = Math.min(width, height) / 20;
@@ -987,10 +993,10 @@
             
             // Draw walls
             for (let y = 0; y < MAP.length; y++) {
-                for (let x = 0; x < MAP[y].length; x++) {
+                for (let x = 0; x < MAP[0].length; x++) {
                     if (MAP[y][x] > 0) {
                         // Wall cell
-                        ctx.fillStyle = getWallColor(MAP[y][x]);
+                        ctx.fillStyle = '#8b0000';  // Dark red for walls
                         ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
                     } else {
                         // Empty cell
@@ -1030,7 +1036,7 @@
             // Draw fish
             if (gameState.fish) {
                 gameState.fish.forEach(fish => {
-                    ctx.fillStyle = FISH_TYPES[fish.type].color;
+                    ctx.fillStyle = '#ff0000';  // Red for fish
                     ctx.beginPath();
                     ctx.arc(
                         fish.x * cellSize, 
@@ -1045,7 +1051,7 @@
             
             // Draw bullets
             if (gameState.player && gameState.player.bullets) {
-                ctx.fillStyle = '#ff0000';
+                ctx.fillStyle = '#00ff00';  // Green for bullets
                 gameState.player.bullets.forEach(bullet => {
                     ctx.beginPath();
                     ctx.arc(
@@ -1657,9 +1663,42 @@
             });
         }
 
-        setupControls();
-        resetGame();
-        setupToggleView();
+        // Setup spawn fish button
+        function setupSpawnFishButton() {
+            console.log("Setting up spawn fish button");
+            const spawnFishBtn = document.getElementById('spawnFishBtn');
+            
+            spawnFishBtn.addEventListener('click', function() {
+                console.log("Spawn fish button clicked");
+                
+                // Send request to spawn fish
+                fetch('/spawn-fish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ count: 3 })  // Spawn 3 fish at once
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Fish spawned:", data);
+                    updateGame(data);
+                })
+                .catch(error => {
+                    console.error('Error spawning fish:', error);
+                });
+            });
+        }
+
+        // Initialize everything
+        function initializeGame() {
+            setupControls();
+            setupToggleView();
+            setupSpawnFishButton();
+            resetGame();
+            console.log("Game initialized");
+        }
+
+        // Call the initialization function
+        initializeGame();
     </script>
 </body>
 </html>
