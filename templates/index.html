@@ -1,40 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Fishing Shooter</title>
+    <title>Fishing Shooter 3D</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #e6f3ff;
+            background-color: #2a2a2a;
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 10px;
             min-height: 100vh;
             touch-action: none;
+            color: #fff;
         }
 
         #gameContainer {
             position: relative;
             width: 100%;
-            max-width: 600px;
+            max-width: 800px;
             margin: 10px auto;
         }
 
         #gameCanvas {
             width: 100%;
             height: auto;
-            border: 2px solid #0077be;
-            background-color: #00a6ed;
+            border: 2px solid #555;
+            background-color: #000;
             border-radius: 10px;
         }
 
         #score {
             font-size: 1.5rem;
             margin: 10px 0;
-            color: #005c99;
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        #ammo {
+            font-size: 1.2rem;
+            margin: 5px 0;
+            color: #ff9800;
             text-align: center;
         }
 
@@ -59,7 +67,7 @@
             padding: 15px;
             font-size: 1.2rem;
             cursor: pointer;
-            background-color: #005c99;
+            background-color: #444;
             color: white;
             border: none;
             border-radius: 10px;
@@ -76,6 +84,31 @@
             background-color: #4CAF50;
         }
 
+        #forwardBtn {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        #backwardBtn {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        #leftBtn {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        #rightBtn {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        #shootBtn {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
         @media (max-width: 600px) {
             .control-btn {
                 padding: 12px;
@@ -86,16 +119,19 @@
 </head>
 <body>
     <div id="score">Score: 0</div>
-    <div id="gameOver">Game Over! Fish got away!</div>
+    <div id="ammo">Lures: 10</div>
+    <div id="gameOver">Game Over! The fish have taken over the lake!</div>
     
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="800"></canvas>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
     </div>
 
     <div id="controls">
+        <button class="control-btn" id="forwardBtn">↑</button>
         <button class="control-btn" id="leftBtn">←</button>
         <button class="control-btn" id="shootBtn">🎣</button>
         <button class="control-btn" id="rightBtn">→</button>
+        <button class="control-btn" id="backwardBtn">↓</button>
         <button class="control-btn" id="resetBtn">New Game</button>
     </div>
 
@@ -103,73 +139,278 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         let gameInterval;
-
-        // Fish colors and images
-        const FISH_COLORS = {
-            'bluegill': '#4169E1',
-            'bass': '#006400',
-            'pike': '#8B4513',
-            'muskie': '#DC143C'
+        
+        // Game state
+        let player = {
+            x: 2,
+            y: 2,
+            angle: 0,
+            fov: 60 * Math.PI / 180
+        };
+        
+        // Fish types with properties
+        const FISH_TYPES = {
+            'bluegill': { color: '#4169E1', speed: 0.03, health: 1, damage: 1 },
+            'bass': { color: '#006400', speed: 0.02, health: 2, damage: 2 },
+            'pike': { color: '#8B4513', speed: 0.04, health: 1, damage: 3 },
+            'muskie': { color: '#DC143C', speed: 0.01, health: 4, damage: 5 }
+        };
+        
+        // Map definition (1 = wall, 0 = empty)
+        const MAP = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+        
+        // Game state
+        let gameState = {
+            player: {
+                x: 2,
+                y: 2,
+                angle: 0,
+                lures: 10
+            },
+            fish: [],
+            score: 0,
+            game_over: false
         };
 
         function resizeCanvas() {
             const container = document.getElementById('gameContainer');
             const containerWidth = container.clientWidth;
             canvas.style.width = containerWidth + 'px';
-            canvas.style.height = containerWidth + 'px';
+            canvas.style.height = (containerWidth * 0.75) + 'px';
         }
 
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        function drawBoat(x, y) {
+        function castRay(angle) {
+            // Ray casting algorithm to find walls
+            const rayDirX = Math.cos(angle);
+            const rayDirY = Math.sin(angle);
+            
+            let mapX = Math.floor(gameState.player.x);
+            let mapY = Math.floor(gameState.player.y);
+            
+            // Calculate distance to next x or y grid line
+            let deltaDistX = Math.abs(1 / rayDirX);
+            let deltaDistY = Math.abs(1 / rayDirY);
+            
+            let stepX, stepY;
+            let sideDistX, sideDistY;
+            
+            // Calculate step and initial sideDist
+            if (rayDirX < 0) {
+                stepX = -1;
+                sideDistX = (gameState.player.x - mapX) * deltaDistX;
+            } else {
+                stepX = 1;
+                sideDistX = (mapX + 1.0 - gameState.player.x) * deltaDistX;
+            }
+            
+            if (rayDirY < 0) {
+                stepY = -1;
+                sideDistY = (gameState.player.y - mapY) * deltaDistY;
+            } else {
+                stepY = 1;
+                sideDistY = (mapY + 1.0 - gameState.player.y) * deltaDistY;
+            }
+            
+            // DDA algorithm
+            let hit = 0;
+            let side;
+            
+            while (hit === 0) {
+                // Jump to next map square
+                if (sideDistX < sideDistY) {
+                    sideDistX += deltaDistX;
+                    mapX += stepX;
+                    side = 0;
+                } else {
+                    sideDistY += deltaDistY;
+                    mapY += stepY;
+                    side = 1;
+                }
+                
+                // Check if ray has hit a wall
+                if (mapX < 0 || mapY < 0 || mapX >= MAP[0].length || mapY >= MAP.length) {
+                    hit = 1;
+                } else if (MAP[mapY][mapX] > 0) {
+                    hit = 1;
+                }
+            }
+            
+            // Calculate distance projected on camera direction
+            let perpWallDist;
+            if (side === 0) {
+                perpWallDist = (mapX - gameState.player.x + (1 - stepX) / 2) / rayDirX;
+            } else {
+                perpWallDist = (mapY - gameState.player.y + (1 - stepY) / 2) / rayDirY;
+            }
+            
+            return {
+                distance: perpWallDist,
+                side: side,
+                mapX: mapX,
+                mapY: mapY
+            };
+        }
+
+        function drawWalls() {
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Draw sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, width, height / 2);
+            
+            // Draw ground/water
+            ctx.fillStyle = '#00a6ed';
+            ctx.fillRect(0, height / 2, width, height / 2);
+            
+            // Cast rays for each column of the screen
+            for (let x = 0; x < width; x++) {
+                // Calculate ray position and direction
+                const cameraX = 2 * x / width - 1; // x-coordinate in camera space
+                const rayAngle = gameState.player.angle + Math.atan(cameraX * Math.tan(player.fov / 2));
+                
+                const ray = castRay(rayAngle);
+                
+                // Calculate height of line to draw on screen
+                let lineHeight = Math.floor(height / ray.distance);
+                
+                // Calculate lowest and highest pixel to fill in current stripe
+                let drawStart = Math.max(0, Math.floor(-lineHeight / 2 + height / 2));
+                let drawEnd = Math.min(height - 1, Math.floor(lineHeight / 2 + height / 2));
+                
+                // Choose wall color based on side
+                let wallColor;
+                if (ray.side === 0) {
+                    wallColor = '#006400'; // Dark green for x-side walls
+                } else {
+                    wallColor = '#004d00'; // Darker green for y-side walls
+                }
+                
+                // Draw the wall slice
+                ctx.fillStyle = wallColor;
+                ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+            }
+        }
+
+        function drawFish() {
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Sort fish by distance (furthest first for proper rendering)
+            gameState.fish.sort((a, b) => {
+                const distA = Math.pow(a.x - gameState.player.x, 2) + Math.pow(a.y - gameState.player.y, 2);
+                const distB = Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2);
+                return distB - distA;
+            });
+            
+            // Draw each fish
+            gameState.fish.forEach(fish => {
+                // Calculate fish position relative to player
+                const dx = fish.x - gameState.player.x;
+                const dy = fish.y - gameState.player.y;
+                
+                // Calculate angle to fish
+                let fishAngle = Math.atan2(dy, dx);
+                
+                // Normalize angles
+                while (fishAngle - gameState.player.angle > Math.PI) fishAngle -= 2 * Math.PI;
+                while (fishAngle - gameState.player.angle < -Math.PI) fishAngle += 2 * Math.PI;
+                
+                // Check if fish is in field of view
+                if (Math.abs(fishAngle - gameState.player.angle) < player.fov / 2) {
+                    // Calculate fish distance
+                    const fishDist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Calculate fish size based on distance
+                    const fishSize = Math.min(height / 3, 5000 / fishDist);
+                    
+                    // Calculate screen position
+                    const angleToCenter = fishAngle - gameState.player.angle;
+                    const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
+                    const screenY = height / 2;
+                    
+                    // Draw fish
+                    ctx.fillStyle = FISH_TYPES[fish.type].color;
+                    ctx.beginPath();
+                    ctx.ellipse(screenX, screenY, fishSize / 2, fishSize, 0, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Draw fish eye
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    ctx.arc(screenX + fishSize / 3, screenY - fishSize / 4, fishSize / 10, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Draw fish tail
+                    ctx.beginPath();
+                    ctx.moveTo(screenX - fishSize / 2, screenY);
+                    ctx.lineTo(screenX - fishSize, screenY - fishSize / 3);
+                    ctx.lineTo(screenX - fishSize, screenY + fishSize / 3);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            });
+        }
+
+        function drawWeapon() {
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Draw fishing rod
             ctx.fillStyle = '#8B4513';
+            ctx.fillRect(width / 2 - 5, height - 100, 10, 100);
+            
+            // Draw reel
+            ctx.fillStyle = '#C0C0C0';
             ctx.beginPath();
-            ctx.moveTo(x * 20, y * 20);
-            ctx.lineTo((x + 2) * 20, y * 20);
-            ctx.lineTo((x + 1.5) * 20, (y + 1) * 20);
-            ctx.lineTo((x + 0.5) * 20, (y + 1) * 20);
-            ctx.closePath();
+            ctx.arc(width / 2, height - 70, 15, 0, 2 * Math.PI);
             ctx.fill();
-        }
-
-        function drawFish(fish) {
-            ctx.fillStyle = FISH_COLORS[fish.type];
+            
+            // Draw line
+            ctx.strokeStyle = '#FFF';
+            ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(fish.x * 20, fish.y * 20);
-            ctx.lineTo((fish.x + 1.5) * 20, (fish.y + 0.5) * 20);
-            ctx.lineTo(fish.x * 20, (fish.y + 1) * 20);
-            ctx.closePath();
-            ctx.fill();
-        }
-
-        function drawLure(lure) {
+            ctx.moveTo(width / 2, height - 100);
+            ctx.lineTo(width / 2, height - 150);
+            ctx.stroke();
+            
+            // Draw lure
             ctx.fillStyle = '#FF0000';
             ctx.beginPath();
-            ctx.arc(lure.x * 20 + 10, lure.y * 20 + 10, 5, 0, Math.PI * 2);
+            ctx.arc(width / 2, height - 150, 5, 0, 2 * Math.PI);
             ctx.fill();
         }
 
-        function drawGame(gameState) {
+        function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw water background
-            ctx.fillStyle = '#00a6ed';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw player's boat
-            drawBoat(gameState.player.x, gameState.player.y);
-
-            // Draw lures
-            gameState.player.lures.forEach(drawLure);
-
-            // Draw fish
-            gameState.fish.forEach(drawFish);
-        }
-
-        function updateGame(gameState) {
-            drawGame(gameState);
+            
+            drawWalls();
+            drawFish();
+            drawWeapon();
+            
+            // Update UI
             document.getElementById('score').textContent = `Score: ${gameState.score}`;
+            document.getElementById('ammo').textContent = `Lures: ${gameState.player.lures}`;
             
             if (gameState.game_over) {
                 document.getElementById('gameOver').style.display = 'block';
@@ -177,97 +418,83 @@
             }
         }
 
-        function setupControls() {
-        // Touch controls
-        document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            move('LEFT');
-        });
-        document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            move('RIGHT');
-        });
-        document.getElementById('shootBtn').addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            shoot();
-        });
-        
-        // Mouse controls
-        document.getElementById('leftBtn').addEventListener('mousedown', () => move('LEFT'));
-        document.getElementById('rightBtn').addEventListener('mousedown', () => move('RIGHT'));
-        document.getElementById('shootBtn').addEventListener('click', shoot);
-        document.getElementById('resetBtn').addEventListener('click', resetGame);
+        function updateGame(newState) {
+            gameState = newState;
+            drawGame();
+        }
 
-        // Keyboard controls with continuous movement
-        let keyState = {};
-        
-        document.addEventListener('keydown', (e) => {
-            keyState[e.key] = true;
-            if (e.key === ' ') {
+        function setupControls() {
+            // Touch controls
+            document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                move('LEFT');
+            });
+            document.getElementById('rightBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                move('RIGHT');
+            });
+            document.getElementById('forwardBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                move('FORWARD');
+            });
+            document.getElementById('backwardBtn').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                move('BACKWARD');
+            });
+            document.getElementById('shootBtn').addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 shoot();
-            }
-        });
+            });
+            
+            // Mouse controls
+            document.getElementById('leftBtn').addEventListener('mousedown', () => move('LEFT'));
+            document.getElementById('rightBtn').addEventListener('mousedown', () => move('RIGHT'));
+            document.getElementById('forwardBtn').addEventListener('mousedown', () => move('FORWARD'));
+            document.getElementById('backwardBtn').addEventListener('mousedown', () => move('BACKWARD'));
+            document.getElementById('shootBtn').addEventListener('click', shoot);
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
 
-        document.addEventListener('keyup', (e) => {
-            keyState[e.key] = false;
-        });
+            // Keyboard controls with continuous movement
+            let keyState = {};
+            
+            document.addEventListener('keydown', (e) => {
+                keyState[e.key] = true;
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    shoot();
+                }
+            });
 
-        // Continuous movement check
-        setInterval(() => {
-            if (keyState['ArrowLeft']) move('LEFT');
-            if (keyState['ArrowRight']) move('RIGHT');
-        }, 50);
-    }
+            document.addEventListener('keyup', (e) => {
+                keyState[e.key] = false;
+            });
 
-    function move(direction) {
-        fetch('/move', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ direction: direction })
-        })
-        .then(response => response.json())
-        .then(updateGame)
-        .catch(error => console.error('Error:', error));
-    }
+            // Continuous movement check
+            setInterval(() => {
+                if (keyState['ArrowLeft']) move('LEFT');
+                if (keyState['ArrowRight']) move('RIGHT');
+                if (keyState['ArrowUp']) move('FORWARD');
+                if (keyState['ArrowDown']) move('BACKWARD');
+            }, 50);
+            
+            // Mouse look
+            canvas.addEventListener('mousemove', (e) => {
+                if (e.buttons === 1) { // Left mouse button held down
+                    const movementX = e.movementX || 0;
+                    move('LOOK', movementX / 100);
+                }
+            });
+        }
 
-    function shoot() {
-        fetch('/move', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ shoot: true })
-        })
-        .then(response => response.json())
-        .then(updateGame)
-        .catch(error => console.error('Error:', error));
-    }
-
-    function resetGame() {
-        document.getElementById('gameOver').style.display = 'none';
-        fetch('/reset', { method: 'POST' })
-            .then(response => response.json())
-            .then(updateGame);
-        
-        clearInterval(gameInterval);
-        gameInterval = setInterval(() => {
+        function move(direction, amount = 1) {
             fetch('/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify({ direction: direction, amount: amount })
             })
             .then(response => response.json())
-            .then(updateGame);
-        }, 50);
-    }
-
-        function move(direction) {
-            fetch('/move', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ direction: direction })
-            })
-            .then(response => response.json())
-            .then(updateGame);
+            .then(updateGame)
+            .catch(error => console.error('Error:', error));
         }
 
         function shoot() {
@@ -277,7 +504,8 @@
                 body: JSON.stringify({ shoot: true })
             })
             .then(response => response.json())
-            .then(updateGame);
+            .then(updateGame)
+            .catch(error => console.error('Error:', error));
         }
 
         function resetGame() {
