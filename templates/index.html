@@ -136,6 +136,7 @@
         <button class="control-btn" id="toggleViewBtn" style="background-color: #9c27b0;">Toggle View</button>
         <button class="control-btn" id="spawnFishBtn" style="background-color: #2196F3;">Spawn Fish</button>
         <button class="control-btn" id="debugBtn" style="background-color: #673AB7;">Debug</button>
+        <button class="control-btn" id="directHitBtn" style="background-color: #E91E63;">Direct Hit</button>
     </div>
 
     <audio id="splashSound" src="https://assets.mixkit.co/sfx/preview/mixkit-water-splash-1295.mp3" preload="auto"></audio>
@@ -875,32 +876,87 @@
             }
         }
 
+        function showHitIndicator(x, y, damage) {
+            // Create a floating damage indicator
+            const indicator = document.createElement('div');
+            indicator.textContent = `-${damage}`;
+            indicator.style.position = 'absolute';
+            indicator.style.color = '#ff0000';
+            indicator.style.fontWeight = 'bold';
+            indicator.style.fontSize = '24px';
+            indicator.style.textShadow = '2px 2px 0 #000';
+            indicator.style.left = `${x}px`;
+            indicator.style.top = `${y}px`;
+            indicator.style.pointerEvents = 'none';
+            indicator.style.zIndex = '1000';
+            
+            document.body.appendChild(indicator);
+            
+            // Animate the indicator
+            let opacity = 1;
+            let posY = y;
+            
+            const animate = () => {
+                opacity -= 0.02;
+                posY -= 1;
+                
+                indicator.style.opacity = opacity;
+                indicator.style.top = `${posY}px`;
+                
+                if (opacity > 0) {
+                    requestAnimationFrame(animate);
+                } else {
+                    document.body.removeChild(indicator);
+                }
+            };
+            
+            animate();
+        }
+
+        // Update the updateGame function to check for fish health changes
+        let previousFishHealth = {};
+
         function updateGame(newState) {
             console.log("Received game state:", newState);
-            if (!newState) {
-                console.error("Game state is null or undefined!");
-                return;
+            
+            // Check for fish health changes
+            if (newState.fish && gameState && gameState.fish) {
+                newState.fish.forEach(fish => {
+                    const fishId = `${fish.type}-${fish.x.toFixed(2)}-${fish.y.toFixed(2)}`;
+                    
+                    if (previousFishHealth[fishId] !== undefined && fish.health < previousFishHealth[fishId]) {
+                        // Fish took damage
+                        const damage = previousFishHealth[fishId] - fish.health;
+                        
+                        // Calculate screen position for the fish
+                        const dx = fish.x - newState.player.x;
+                        const dy = fish.y - newState.player.y;
+                        const fishAngle = Math.atan2(dy, dx);
+                        
+                        if (Math.abs(fishAngle - newState.player.angle) < player.fov / 2) {
+                            const width = canvas.width;
+                            const height = canvas.height;
+                            const angleToCenter = fishAngle - newState.player.angle;
+                            const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
+                            const screenY = height / 2;
+                            
+                            // Show hit indicator
+                            showHitIndicator(screenX, screenY, damage);
+                            
+                            // Play hit sound
+                            const hitSound = document.getElementById('hitSound');
+                            hitSound.volume = 0.3;
+                            hitSound.currentTime = 0;
+                            hitSound.play().catch(e => console.log("Audio play failed:", e));
+                        }
+                    }
+                    
+                    // Update previous health
+                    previousFishHealth[fishId] = fish.health;
+                });
             }
             
             gameState = newState;
-            
-            // Check if critical properties exist
-            if (!gameState.player) {
-                console.error("Player object missing in game state!");
-                return;
-            }
-            
-            if (!gameState.fish) {
-                console.error("Fish array missing in game state!");
-                return;
-            }
-            
-            if (!gameState.power_ups) {
-                console.error("Power-ups array missing in game state!");
-                return;
-            }
-            
-            console.log("Drawing game with state:", gameState);
             drawGame();
         }
 
@@ -1360,6 +1416,31 @@
                 .catch(error => console.error('Error in debug shoot:', error));
             } else {
                 console.log("No fish to target");
+            }
+        }
+
+        document.getElementById('directHitBtn').addEventListener('click', directHit);
+
+        function directHit() {
+            console.log("Attempting direct hit on fish");
+            
+            if (gameState.fish && gameState.fish.length > 0) {
+                fetch('/hit-fish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        index: 0,  // Hit the first fish
+                        damage: 1  // Apply 1 damage
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Direct hit response:", data);
+                    updateGame(data);
+                })
+                .catch(error => console.error('Error in direct hit:', error));
+            } else {
+                console.log("No fish to hit");
             }
         }
 

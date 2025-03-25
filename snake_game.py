@@ -311,69 +311,89 @@ class Game:
         return True
     
     def update(self):
-        # Update bullets
+        # Make sure we have bullet and explosion arrays
         if 'bullets' not in self.player:
             self.player['bullets'] = []
         
         if 'explosions' not in self.player:
             self.player['explosions'] = []
         
-        # Update bullets and check for hits
-        for bullet in self.player['bullets'][:]:
+        # Update existing explosions
+        for explosion in self.player['explosions'][:]:
+            explosion['time'] -= 1
+            if explosion['time'] <= 0:
+                self.player['explosions'].remove(explosion)
+        
+        # Process each bullet
+        print(f"Processing {len(self.player['bullets'])} bullets")
+        for bullet in list(self.player['bullets']):  # Use list() to create a copy
             # Move bullet
             bullet['x'] += math.cos(bullet['angle']) * bullet['speed']
             bullet['y'] += math.sin(bullet['angle']) * bullet['speed']
             bullet['distance'] += bullet['speed']
             
-            # Check if bullet hit a wall
+            # Check if bullet hit a wall or exceeded max distance
             if not self.is_valid_position(bullet['x'], bullet['y']) or bullet['distance'] >= bullet['max_distance']:
+                print(f"Bullet hit wall or exceeded max distance at ({bullet['x']}, {bullet['y']})")
                 # Create explosion at wall hit
                 self.player['explosions'].append({
                     'x': bullet['x'],
                     'y': bullet['y'],
                     'size': 0.3,
-                    'time': 5  # frames the explosion lasts
+                    'time': 5
                 })
                 self.player['bullets'].remove(bullet)
                 continue
             
-            # Check if bullet hit a fish - IMPROVED COLLISION DETECTION
-            hit_fish = False
-            for i, fish in enumerate(self.fish):
+            # Check for fish collisions
+            hit = False
+            for i, fish in enumerate(list(self.fish)):  # Use list() to create a copy
+                # Calculate distance between bullet and fish
                 dx = fish['x'] - bullet['x']
                 dy = fish['y'] - bullet['y']
-                dist = math.sqrt(dx**2 + dy**2)
+                dist = math.sqrt(dx*dx + dy*dy)
                 
-                # Increased hit radius to make hitting fish easier
-                if dist < 1.5:  # Increased from 0.5 to 1.5
-                    # Hit the fish
+                # Very generous hit radius to make hitting fish easier
+                if dist < 2.0:
+                    print(f"BULLET HIT FISH! Distance: {dist}")
+                    print(f"Bullet position: ({bullet['x']}, {bullet['y']})")
+                    print(f"Fish position: ({fish['x']}, {fish['y']})")
+                    
+                    # Apply damage to fish
                     damage = bullet.get('damage', 1) * self.player['lure_power']
                     fish['health'] -= damage
                     
-                    print(f"Fish hit! Type: {fish['type']}, Health: {fish['health']}")
+                    print(f"Fish hit! Type: {fish['type']}, Health before: {fish['health'] + damage}, after: {fish['health']}")
                     
-                    # Create explosion
+                    # Create explosion at hit location
                     self.player['explosions'].append({
                         'x': bullet['x'],
                         'y': bullet['y'],
                         'size': 0.5,
-                        'time': 10  # frames the explosion lasts
+                        'time': 10
                     })
                     
                     # Remove bullet
-                    self.player['bullets'].remove(bullet)
-                    hit_fish = True
+                    if bullet in self.player['bullets']:
+                        self.player['bullets'].remove(bullet)
                     
+                    # Check if fish is dead
                     if fish['health'] <= 0:
-                        # Fish is caught
+                        print(f"Fish killed! Type: {fish['type']}, Points: {FISH_TYPES[fish['type']]['points']}")
+                        # Add score
                         self.score += FISH_TYPES[fish['type']]['points']
-                        self.fish.pop(i)
+                        
+                        # Remove fish
+                        if fish in self.fish:
+                            self.fish.remove(fish)
+                        
                         # Spawn a new fish
                         self.spawn_fish(1)
                     
+                    hit = True
                     break
             
-            if hit_fish:
+            if hit:
                 continue
         
         # Move fish
