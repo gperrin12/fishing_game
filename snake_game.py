@@ -3,6 +3,7 @@ from flask_cors import CORS
 import random
 import time
 import json
+import math
 
 app = Flask(__name__)
 CORS(app)
@@ -14,16 +15,39 @@ try:
 except:
     HIGH_SCORES = {'scores': []}
 
+# Map definition (1 = wall, 0 = empty)
+MAP = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+    [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1],
+    [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+]
+
 # Game state
 game_state = {
     'player': {
-        'x': 15,
-        'y': 35,
-        'lures': [],  # [{'x': x, 'y': y, 'type': 'fly', 'power': power}]
-        'current_lure': 'fly',
-        'power_ups': [],
+        'x': 2.0,
+        'y': 2.0,
+        'angle': 0.0,
+        'lures': 10,
+        'lures_used': 0,
+        'lure_power': 1.0,
         'casting_speed': 1.0,
-        'lure_power': 1.0
+        'power_ups': [],
+        'current_lure': 'fly',
+        'power_ups_used': []
     },
     'fish': [],  # [{'x': x, 'y': y, 'type': 'bass', 'speed': speed, 'health': health}]
     'boss': None,  # {'x': x, 'y': y, 'health': health, 'pattern': pattern}
@@ -44,10 +68,10 @@ LURE_TYPES = {
 }
 
 FISH_TYPES = {
-    'bluegill': {'points': 10, 'speed': 1, 'chance': 0.4, 'health': 1},
-    'bass': {'points': 20, 'speed': 2, 'chance': 0.3, 'health': 2},
-    'pike': {'points': 30, 'speed': 3, 'chance': 0.2, 'health': 3},
-    'muskie': {'points': 50, 'speed': 4, 'chance': 0.1, 'health': 4}
+    'bluegill': {'speed': 0.03, 'health': 1, 'damage': 1},
+    'bass': {'speed': 0.02, 'health': 2, 'damage': 2},
+    'pike': {'speed': 0.04, 'health': 1, 'damage': 3},
+    'muskie': {'speed': 0.01, 'health': 4, 'damage': 5}
 }
 
 POWER_UPS = {
@@ -81,12 +105,16 @@ def save_high_score(score):
         json.dump(HIGH_SCORES, f)
 
 def reset_game():
-    game_state['player']['x'] = GRID_WIDTH // 2
-    game_state['player']['lures'] = []
-    game_state['player']['current_lure'] = 'fly'
-    game_state['player']['power_ups'] = []
-    game_state['player']['casting_speed'] = 1.0
+    game_state['player']['x'] = 2.0
+    game_state['player']['y'] = 2.0
+    game_state['player']['angle'] = 0.0
+    game_state['player']['lures'] = 10
+    game_state['player']['lures_used'] = 0
     game_state['player']['lure_power'] = 1.0
+    game_state['player']['casting_speed'] = 1.0
+    game_state['player']['power_ups'] = []
+    game_state['player']['current_lure'] = 'fly'
+    game_state['player']['power_ups_used'] = []
     game_state['fish'] = []
     game_state['boss'] = None
     game_state['score'] = 0
@@ -138,7 +166,177 @@ def spawn_fish():
             'animation_frame': 0
         }
         game_state['fish'].append(new_fish)
-# ... [Previous code remains the same] ...
+
+class Game:
+    def __init__(self):
+        self.reset()
+    
+    def reset(self):
+        self.reset_game()
+    
+    def reset_game(self):
+        self.reset_game()
+    
+    def spawn_fish(self, count):
+        for _ in range(count):
+            # Find a valid position (not in a wall and not too close to player)
+            while True:
+                x = random.uniform(1, len(MAP[0]) - 2)
+                y = random.uniform(1, len(MAP) - 2)
+                
+                # Check if position is in a wall
+                if MAP[int(y)][int(x)] != 0:
+                    continue
+                
+                # Check if too close to player
+                dist = math.sqrt((x - self.player['x'])**2 + (y - self.player['y'])**2)
+                if dist < 3:
+                    continue
+                
+                break
+            
+            fish_type = random.choice(list(FISH_TYPES.keys()))
+            self.fish.append({
+                'x': x,
+                'y': y,
+                'type': fish_type,
+                'health': FISH_TYPES[fish_type]['health'],
+                'direction': random.uniform(0, 2 * math.pi)
+            })
+    
+    def move_player(self, direction, amount=1):
+        move_speed = 0.1
+        rotation_speed = 0.05
+        
+        if direction == 'FORWARD':
+            new_x = self.player['x'] + math.cos(self.player['angle']) * move_speed * amount
+            new_y = self.player['y'] + math.sin(self.player['angle']) * move_speed * amount
+            if self.is_valid_position(new_x, new_y):
+                self.player['x'] = new_x
+                self.player['y'] = new_y
+        
+        elif direction == 'BACKWARD':
+            new_x = self.player['x'] - math.cos(self.player['angle']) * move_speed * amount
+            new_y = self.player['y'] - math.sin(self.player['angle']) * move_speed * amount
+            if self.is_valid_position(new_x, new_y):
+                self.player['x'] = new_x
+                self.player['y'] = new_y
+        
+        elif direction == 'LEFT':
+            self.player['angle'] -= rotation_speed * amount
+        
+        elif direction == 'RIGHT':
+            self.player['angle'] += rotation_speed * amount
+        
+        elif direction == 'LOOK':
+            self.player['angle'] += rotation_speed * amount
+    
+    def is_valid_position(self, x, y):
+        # Check if position is within map bounds
+        if x < 0 or y < 0 or x >= len(MAP[0]) or y >= len(MAP):
+            return False
+        
+        # Check if position is in a wall
+        if MAP[int(y)][int(x)] != 0:
+            return False
+        
+        return True
+    
+    def shoot(self):
+        if self.player['lures'] <= 0:
+            return False
+        
+        self.player['lures'] -= 1
+        
+        # Check if any fish is in front of the player
+        for i, fish in enumerate(self.fish):
+            # Calculate angle to fish
+            dx = fish['x'] - self.player['x']
+            dy = fish['y'] - self.player['y']
+            fish_angle = math.atan2(dy, dx)
+            
+            # Normalize angles
+            while fish_angle - self.player['angle'] > math.pi:
+                fish_angle -= 2 * math.pi
+            while fish_angle - self.player['angle'] < -math.pi:
+                fish_angle += 2 * math.pi
+            
+            # Check if fish is in field of view (within 15 degrees)
+            if abs(fish_angle - self.player['angle']) < 15 * math.pi / 180:
+                # Calculate distance to fish
+                dist = math.sqrt(dx**2 + dy**2)
+                
+                # Check if fish is close enough
+                if dist < 5:
+                    # Hit the fish
+                    fish['health'] -= 1
+                    if fish['health'] <= 0:
+                        # Fish is caught
+                        self.score += 10
+                        self.fish.pop(i)
+                        # Spawn a new fish
+                        self.spawn_fish(1)
+                    return True
+        
+        return False
+    
+    def update(self):
+        # Move fish
+        for fish in self.fish:
+            # Occasionally change direction
+            if random.random() < 0.02:
+                fish['direction'] = random.uniform(0, 2 * math.pi)
+            
+            # Move fish in its direction
+            speed = FISH_TYPES[fish['type']]['speed']
+            new_x = fish['x'] + math.cos(fish['direction']) * speed
+            new_y = fish['y'] + math.sin(fish['direction']) * speed
+            
+            # Check if new position is valid
+            if self.is_valid_position(new_x, new_y):
+                fish['x'] = new_x
+                fish['y'] = new_y
+            else:
+                # If not valid, reverse direction
+                fish['direction'] += math.pi
+            
+            # Check if fish is too close to player
+            dx = fish['x'] - self.player['x']
+            dy = fish['y'] - self.player['y']
+            dist = math.sqrt(dx**2 + dy**2)
+            
+            if dist < 0.5:
+                # Fish attacks player
+                self.game_over = True
+        
+        # Spawn new fish occasionally
+        if random.random() < 0.01 and len(self.fish) < 10:
+            self.spawn_fish(1)
+        
+        # Check if player is out of lures and no fish are left
+        if self.player['lures'] <= 0 and len(self.fish) > 0:
+            # Check if any fish is within shooting range
+            can_shoot = False
+            for fish in self.fish:
+                dx = fish['x'] - self.player['x']
+                dy = fish['y'] - self.player['y']
+                dist = math.sqrt(dx**2 + dy**2)
+                if dist < 5:
+                    can_shoot = True
+                    break
+            
+            if not can_shoot:
+                self.game_over = True
+    
+    def get_state(self):
+        return {
+            'player': self.player,
+            'fish': self.fish,
+            'score': self.score,
+            'game_over': self.game_over
+        }
+
+game = Game()
 
 @app.route('/')
 def home():
@@ -150,7 +348,7 @@ def get_high_scores():
 
 @app.route('/game-state')
 def get_game_state():
-    return jsonify(game_state)
+    return jsonify(game.get_state())
 
 @app.route('/change-lure', methods=['POST'])
 def change_lure():
