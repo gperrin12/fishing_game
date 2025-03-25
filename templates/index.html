@@ -134,6 +134,7 @@
         <button class="control-btn" id="backwardBtn">↓</button>
         <button class="control-btn" id="resetBtn">New Game</button>
         <button class="control-btn" id="toggleViewBtn" style="background-color: #9c27b0;">Toggle View</button>
+        <button class="control-btn" id="spawnFishBtn" style="background-color: #2196F3;">Spawn Fish</button>
     </div>
 
     <audio id="splashSound" src="https://assets.mixkit.co/sfx/preview/mixkit-water-splash-1295.mp3" preload="auto"></audio>
@@ -1022,14 +1023,53 @@
         }
 
         function shoot() {
+            console.log("Shooting!");
+            
             fetch('/move', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ shoot: true })
             })
-            .then(response => response.json())
-            .then(updateGame)
-            .catch(error => console.error('Error:', error));
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                console.log("Shoot response received");
+                return response.json();
+            })
+            .then(data => {
+                console.log("Shoot data received:", data);
+                updateGame(data);
+            })
+            .catch(error => {
+                console.error('Error in shoot:', error);
+                
+                // Create a local bullet if server request fails
+                if (gameState && gameState.player) {
+                    if (!gameState.player.bullets) {
+                        gameState.player.bullets = [];
+                    }
+                    
+                    // Add a new bullet
+                    gameState.player.bullets.push({
+                        x: gameState.player.x,
+                        y: gameState.player.y,
+                        angle: gameState.player.angle,
+                        speed: 0.2 * (gameState.player.lure_speed || 1.0),
+                        distance: 0,
+                        max_distance: 10,
+                        active: true
+                    });
+                    
+                    // Play shoot sound
+                    const hitSound = document.getElementById('hitSound');
+                    hitSound.volume = 0.2;
+                    hitSound.currentTime = 0;
+                    hitSound.play().catch(e => console.log("Audio play failed:", e));
+                    
+                    drawGame();
+                }
+            });
         }
 
         function resetGame() {
@@ -1135,6 +1175,79 @@
             ctx.font = '20px Arial';
             ctx.textAlign = 'center';
             ctx.fillText('Fallback View - Check Console for Errors', width/2, 30);
+        }
+
+        document.getElementById('spawnFishBtn').addEventListener('click', spawnFish);
+
+        function spawnFish() {
+            console.log("Manually spawning fish");
+            
+            fetch('/spawn-fish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ count: 1 })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Fish spawned:", data);
+                updateGame(data);
+            })
+            .catch(error => {
+                console.error('Error spawning fish:', error);
+                
+                // Create a local fish if server request fails
+                if (gameState) {
+                    if (!gameState.fish) {
+                        gameState.fish = [];
+                    }
+                    
+                    // Add a new fish at a random position
+                    const fishTypes = Object.keys(FISH_TYPES);
+                    const randomType = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+                    
+                    // Find a valid position (not in a wall and not too close to player)
+                    let x, y, valid = false;
+                    while (!valid) {
+                        x = 1 + Math.random() * (MAP[0].length - 2);
+                        y = 1 + Math.random() * (MAP.length - 2);
+                        
+                        // Check if position is in a wall
+                        if (MAP[Math.floor(y)][Math.floor(x)] !== 0) {
+                            continue;
+                        }
+                        
+                        // Check if too close to player
+                        const dist = Math.sqrt(
+                            Math.pow(x - gameState.player.x, 2) + 
+                            Math.pow(y - gameState.player.y, 2)
+                        );
+                        if (dist < 5) {
+                            continue;
+                        }
+                        
+                        valid = true;
+                    }
+                    
+                    gameState.fish.push({
+                        x: x,
+                        y: y,
+                        type: randomType,
+                        health: FISH_TYPES[randomType].health,
+                        direction: Math.random() * 2 * Math.PI,
+                        speed: FISH_TYPES[randomType].speed,
+                        state: 'patrol',
+                        state_timer: 50 + Math.random() * 100
+                    });
+                    
+                    console.log("Locally spawned fish:", gameState.fish[gameState.fish.length - 1]);
+                    drawGame();
+                }
+            });
         }
 
         setupControls();

@@ -692,5 +692,17 @@ def reset():
     print(f"Reset state: {state}")
     return jsonify(state)
 
+@app.route('/spawn-fish', methods=['POST'])
+def spawn_fish_route():
+    print("Spawn fish request received")
+    data = request.get_json()
+    count = data.get('count', 1)
+    
+    game.spawn_fish(count)
+    
+    state = game.get_state()
+    print(f"After spawning fish: {len(state['fish'])} fish in game")
+    return jsonify(state)
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
