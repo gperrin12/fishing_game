@@ -316,6 +316,8 @@
         }
 
         function drawFish() {
+            if (!gameState.fish || gameState.fish.length === 0) return;
+            
             const width = canvas.width;
             const height = canvas.height;
             
@@ -326,7 +328,7 @@
                 return distB - distA;
             });
             
-            // Draw each fish
+            // Draw each fish with enhanced visibility
             gameState.fish.forEach(fish => {
                 // Calculate fish position relative to player
                 const dx = fish.x - gameState.player.x;
@@ -342,44 +344,53 @@
                 // Calculate fish distance
                 const fishDist = Math.sqrt(dx * dx + dy * dy);
                 
-                // Play splash sound occasionally for nearby fish
-                if (fishDist < 8 && Math.random() < 0.001) {
+                // Play splash sound occasionally for nearby fish (increased frequency)
+                if (fishDist < 10 && Math.random() < 0.005) {
                     const splashSound = document.getElementById('splashSound');
                     // Adjust volume based on distance
-                    splashSound.volume = Math.min(1.0, 8 / fishDist) * 0.3;
+                    splashSound.volume = Math.min(1.0, 8 / fishDist) * 0.4;
                     splashSound.currentTime = 0;
                     splashSound.play().catch(e => console.log("Audio play failed:", e));
                 }
                 
                 // Check if fish is in field of view
                 if (Math.abs(fishAngle - gameState.player.angle) < player.fov / 2) {
-                    // Calculate fish size based on distance
-                    const fishSize = Math.min(height / 3, 5000 / fishDist);
+                    // Calculate fish size based on distance (made larger)
+                    const fishSize = Math.min(height / 2.5, 6000 / fishDist);
                     
                     // Calculate screen position
                     const angleToCenter = fishAngle - gameState.player.angle;
                     const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
                     const screenY = height / 2;
                     
-                    // Draw fish
+                    // Draw fish with glow effect for better visibility
+                    ctx.shadowColor = FISH_TYPES[fish.type].color;
+                    ctx.shadowBlur = 15;
+                    
+                    // Draw fish body
                     ctx.fillStyle = FISH_TYPES[fish.type].color;
                     ctx.beginPath();
                     ctx.ellipse(screenX, screenY, fishSize / 2, fishSize, 0, 0, 2 * Math.PI);
                     ctx.fill();
                     
                     // Draw fish eye
+                    ctx.shadowBlur = 0;
                     ctx.fillStyle = '#000';
                     ctx.beginPath();
                     ctx.arc(screenX + fishSize / 3, screenY - fishSize / 4, fishSize / 10, 0, 2 * Math.PI);
                     ctx.fill();
                     
                     // Draw fish tail
+                    ctx.fillStyle = FISH_TYPES[fish.type].color;
                     ctx.beginPath();
                     ctx.moveTo(screenX - fishSize / 2, screenY);
                     ctx.lineTo(screenX - fishSize, screenY - fishSize / 3);
                     ctx.lineTo(screenX - fishSize, screenY + fishSize / 3);
                     ctx.closePath();
                     ctx.fill();
+                    
+                    // Reset shadow
+                    ctx.shadowBlur = 0;
                 }
             });
         }

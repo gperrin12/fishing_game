@@ -187,6 +187,10 @@ class Game:
         self.spawn_fish(5)
     
     def spawn_fish(self, count):
+        # Limit the number of fish that can exist at once
+        if len(self.fish) >= 3:  # Reduced max fish count to 3
+            return
+        
         for _ in range(count):
             # Find a valid position (not in a wall and not too close to player)
             while True:
@@ -200,7 +204,7 @@ class Game:
                 
                 # Make sure fish aren't too close to the player
                 dist = math.sqrt((x - self.player['x'])**2 + (y - self.player['y'])**2)
-                if dist < 5:  # Increased minimum distance
+                if dist < 8:  # Increased minimum distance even more
                     continue
                 
                 break
@@ -212,9 +216,10 @@ class Game:
                 'type': fish_type,
                 'health': FISH_TYPES[fish_type]['health'],
                 'direction': random.uniform(0, 2 * math.pi),
-                'speed': FISH_TYPES[fish_type]['speed'] * random.uniform(0.8, 1.2),  # Randomize speed a bit
-                'state': 'patrol',  # Fish state: patrol, chase, flee
-                'state_timer': random.randint(50, 150)  # Time before changing state
+                'speed': FISH_TYPES[fish_type]['speed'] * random.uniform(0.8, 1.2),
+                'state': 'patrol',
+                'state_timer': random.randint(50, 150),
+                'spawn_time': time.time()  # Track when fish was spawned
             })
     
     def move_player(self, direction, amount=1):
@@ -406,8 +411,18 @@ class Game:
                 # Fish attacks player
                 self.game_over = True
         
-        # Spawn new fish occasionally, but not too close to player
-        if random.random() < 0.005 and len(self.fish) < 15:  # Increased max fish
+        # Spawn new fish with a delay between spawns
+        current_time = time.time()
+        last_spawn_time = 0
+        
+        # Find the most recently spawned fish
+        if self.fish:
+            last_spawn_time = max(fish.get('spawn_time', 0) for fish in self.fish)
+        
+        # Only spawn a new fish if enough time has passed since the last spawn
+        if (current_time - last_spawn_time > 5 and  # 5 second delay between fish
+            random.random() < 0.01 and 
+            len(self.fish) < 3):  # Maximum of 3 fish at once
             self.spawn_fish(1)
         
         # Check if player is out of lures and no fish are left
