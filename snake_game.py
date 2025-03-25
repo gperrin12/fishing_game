@@ -347,14 +347,14 @@ class Game:
             if fish['state_timer'] <= 0:
                 # Change state
                 if fish['state'] == 'patrol':
-                    # 20% chance to chase player if close enough
+                    # 30% chance to chase player if close enough
                     dx = fish['x'] - self.player['x']
                     dy = fish['y'] - self.player['y']
                     dist = math.sqrt(dx**2 + dy**2)
                     
-                    if dist < 8 and random.random() < 0.2:
+                    if dist < 10 and random.random() < 0.3:
                         fish['state'] = 'chase'
-                        fish['state_timer'] = random.randint(30, 70)
+                        fish['state_timer'] = random.randint(50, 100)
                     else:
                         # Just change direction
                         fish['direction'] = random.uniform(0, 2 * math.pi)
@@ -372,7 +372,7 @@ class Game:
                     fish['direction'] = random.uniform(0, 2 * math.pi)
                 
                 # Move fish in its direction
-                speed = fish['speed']
+                speed = fish['speed'] * 0.7  # Slower when patrolling
                 new_x = fish['x'] + math.cos(fish['direction']) * speed
                 new_y = fish['y'] + math.sin(fish['direction']) * speed
                 
@@ -383,10 +383,10 @@ class Game:
                 angle = math.atan2(dy, dx)
                 
                 # Add some randomness to chase
-                angle += random.uniform(-0.2, 0.2)
+                angle += random.uniform(-0.1, 0.1)
                 
                 # Move toward player
-                speed = fish['speed'] * 1.5  # Faster when chasing
+                speed = fish['speed'] * 1.8  # Faster when chasing
                 new_x = fish['x'] + math.cos(angle) * speed
                 new_y = fish['y'] + math.sin(angle) * speed
                 

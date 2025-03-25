@@ -328,7 +328,7 @@
                 return distB - distA;
             });
             
-            // Draw each fish with enhanced visibility
+            // Draw each fish as a sprite in the 3D world
             gameState.fish.forEach(fish => {
                 // Calculate fish position relative to player
                 const dx = fish.x - gameState.player.x;
@@ -344,10 +344,9 @@
                 // Calculate fish distance
                 const fishDist = Math.sqrt(dx * dx + dy * dy);
                 
-                // Play splash sound occasionally for nearby fish (increased frequency)
+                // Play splash sound occasionally for nearby fish
                 if (fishDist < 10 && Math.random() < 0.005) {
                     const splashSound = document.getElementById('splashSound');
-                    // Adjust volume based on distance
                     splashSound.volume = Math.min(1.0, 8 / fishDist) * 0.4;
                     splashSound.currentTime = 0;
                     splashSound.play().catch(e => console.log("Audio play failed:", e));
@@ -355,42 +354,119 @@
                 
                 // Check if fish is in field of view
                 if (Math.abs(fishAngle - gameState.player.angle) < player.fov / 2) {
-                    // Calculate fish size based on distance (made larger)
+                    // Calculate fish size based on distance
                     const fishSize = Math.min(height / 2.5, 6000 / fishDist);
                     
                     // Calculate screen position
                     const angleToCenter = fishAngle - gameState.player.angle;
                     const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
-                    const screenY = height / 2;
                     
-                    // Draw fish with glow effect for better visibility
+                    // Calculate vertical position based on distance (closer fish appear lower)
+                    // This creates the illusion that fish are swimming at eye level
+                    const screenY = height / 2 + (fishDist < 3 ? 20 : 0);
+                    
+                    // Draw fish shadow on floor
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(screenX, height / 2 + fishSize/2, fishSize / 3, fishSize / 6, 0, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Draw fish with sprite-like appearance
+                    ctx.save();
+                    
+                    // Add "bobbing" motion to simulate swimming
+                    const bobAmount = Math.sin(Date.now() / 300 + fish.x * 10) * 5;
+                    
+                    // Determine if fish is facing left or right relative to player
+                    const fishFacingRight = Math.cos(fish.direction - fishAngle) > 0;
+                    
+                    // Draw fish body with glow effect
                     ctx.shadowColor = FISH_TYPES[fish.type].color;
                     ctx.shadowBlur = 15;
+                    ctx.fillStyle = FISH_TYPES[fish.type].color;
                     
                     // Draw fish body
-                    ctx.fillStyle = FISH_TYPES[fish.type].color;
                     ctx.beginPath();
-                    ctx.ellipse(screenX, screenY, fishSize / 2, fishSize, 0, 0, 2 * Math.PI);
+                    if (fishFacingRight) {
+                        // Fish facing right
+                        ctx.ellipse(screenX, screenY + bobAmount, fishSize / 2, fishSize / 3, 0, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Draw fish eye
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(screenX + fishSize / 4, screenY + bobAmount - fishSize / 8, fishSize / 15, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Draw fish tail
+                        ctx.fillStyle = FISH_TYPES[fish.type].color;
+                        ctx.beginPath();
+                        ctx.moveTo(screenX - fishSize / 3, screenY + bobAmount);
+                        ctx.lineTo(screenX - fishSize / 1.5, screenY + bobAmount - fishSize / 4);
+                        ctx.lineTo(screenX - fishSize / 1.5, screenY + bobAmount + fishSize / 4);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        // Draw fins
+                        ctx.beginPath();
+                        ctx.moveTo(screenX, screenY + bobAmount - fishSize / 6);
+                        ctx.lineTo(screenX + fishSize / 6, screenY + bobAmount - fishSize / 3);
+                        ctx.lineTo(screenX - fishSize / 6, screenY + bobAmount - fishSize / 3);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else {
+                        // Fish facing left
+                        ctx.ellipse(screenX, screenY + bobAmount, fishSize / 2, fishSize / 3, 0, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Draw fish eye
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(screenX - fishSize / 4, screenY + bobAmount - fishSize / 8, fishSize / 15, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Draw fish tail
+                        ctx.fillStyle = FISH_TYPES[fish.type].color;
+                        ctx.beginPath();
+                        ctx.moveTo(screenX + fishSize / 3, screenY + bobAmount);
+                        ctx.lineTo(screenX + fishSize / 1.5, screenY + bobAmount - fishSize / 4);
+                        ctx.lineTo(screenX + fishSize / 1.5, screenY + bobAmount + fishSize / 4);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        // Draw fins
+                        ctx.beginPath();
+                        ctx.moveTo(screenX, screenY + bobAmount - fishSize / 6);
+                        ctx.lineTo(screenX - fishSize / 6, screenY + bobAmount - fishSize / 3);
+                        ctx.lineTo(screenX + fishSize / 6, screenY + bobAmount - fishSize / 3);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                    
+                    // Draw mouth
+                    ctx.fillStyle = '#600';
+                    ctx.beginPath();
+                    if (fishFacingRight) {
+                        ctx.arc(screenX + fishSize / 2, screenY + bobAmount, fishSize / 10, -Math.PI/4, Math.PI/4);
+                    } else {
+                        ctx.arc(screenX - fishSize / 2, screenY + bobAmount, fishSize / 10, Math.PI*3/4, Math.PI*5/4);
+                    }
                     ctx.fill();
                     
-                    // Draw fish eye
-                    ctx.shadowBlur = 0;
-                    ctx.fillStyle = '#000';
-                    ctx.beginPath();
-                    ctx.arc(screenX + fishSize / 3, screenY - fishSize / 4, fishSize / 10, 0, 2 * Math.PI);
-                    ctx.fill();
+                    // Add health bar for fish
+                    const healthPercent = fish.health / FISH_TYPES[fish.type].health;
+                    const barWidth = fishSize * 0.8;
+                    const barHeight = fishSize / 15;
                     
-                    // Draw fish tail
-                    ctx.fillStyle = FISH_TYPES[fish.type].color;
-                    ctx.beginPath();
-                    ctx.moveTo(screenX - fishSize / 2, screenY);
-                    ctx.lineTo(screenX - fishSize, screenY - fishSize / 3);
-                    ctx.lineTo(screenX - fishSize, screenY + fishSize / 3);
-                    ctx.closePath();
-                    ctx.fill();
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(screenX - barWidth/2, screenY + bobAmount - fishSize/2 - barHeight*2, barWidth, barHeight);
                     
-                    // Reset shadow
-                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00';
+                    ctx.fillRect(screenX - barWidth/2, screenY + bobAmount - fishSize/2 - barHeight*2, barWidth * healthPercent, barHeight);
+                    
+                    ctx.restore();
                 }
             });
         }
