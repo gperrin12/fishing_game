@@ -898,8 +898,14 @@
 
         let use3DView = true;
 
-        document.getElementById('toggleViewBtn').addEventListener('click', () => {
+        document.getElementById('toggleViewBtn').addEventListener('click', function() {
             use3DView = !use3DView;
+            console.log(`View toggled: ${use3DView ? '3D' : '2D'} view`);
+            
+            // Update button text to show current mode
+            this.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
+            
+            // Redraw the game with the new view
             drawGame();
         });
 
@@ -1617,6 +1623,81 @@
                 }
             }
         });
+
+        // Add function to draw pickups
+        function drawPickups() {
+            if (!gameState.pickups || gameState.pickups.length === 0) return;
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            gameState.pickups.forEach(pickup => {
+                // Calculate pickup position relative to player
+                const dx = pickup.x - gameState.player.x;
+                const dy = pickup.y - gameState.player.y;
+                
+                // Calculate angle to pickup
+                let pickupAngle = Math.atan2(dy, dx);
+                
+                // Normalize angles
+                while (pickupAngle - gameState.player.angle > Math.PI) pickupAngle -= 2 * Math.PI;
+                while (pickupAngle - gameState.player.angle < -Math.PI) pickupAngle += 2 * Math.PI;
+                
+                // Calculate pickup distance
+                const pickupDist = Math.sqrt(dx * dx + dy * dy);
+                
+                // Check if pickup is in field of view
+                if (Math.abs(pickupAngle - gameState.player.angle) < player.fov / 2) {
+                    // Calculate pickup size based on distance
+                    const pickupSize = Math.min(height / 3, 3000 / pickupDist);
+                    
+                    // Calculate screen position
+                    const angleToCenter = pickupAngle - gameState.player.angle;
+                    const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
+                    const screenY = height / 2;
+                    
+                    // Add floating animation
+                    const floatAmount = Math.sin(Date.now() / 300) * 10;
+                    
+                    // Draw pickup based on type
+                    ctx.save();
+                    
+                    if (pickup.type === 'weapon') {
+                        // Weapon pickup
+                        ctx.fillStyle = '#00ff00';  // Green glow
+                        ctx.shadowColor = '#00ff00';
+                        ctx.shadowBlur = 15;
+                        
+                        // Draw weapon icon
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY + floatAmount, pickupSize / 2, 0, 2 * Math.PI);
+                        ctx.fill();
+                        
+                        // Draw weapon name
+                        ctx.font = `${Math.max(12, pickupSize / 4)}px Arial`;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(pickup.weapon.toUpperCase(), screenX, screenY + floatAmount + pickupSize / 2 + 20);
+                    } else if (pickup.type === 'ammo') {
+                        // Ammo pickup
+                        ctx.fillStyle = '#ffff00';  // Yellow glow
+                        ctx.shadowColor = '#ffff00';
+                        ctx.shadowBlur = 15;
+                        
+                        // Draw ammo box
+                        ctx.fillRect(screenX - pickupSize / 3, screenY + floatAmount - pickupSize / 3, pickupSize / 1.5, pickupSize / 1.5);
+                        
+                        // Draw ammo type
+                        ctx.font = `${Math.max(12, pickupSize / 4)}px Arial`;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(pickup.ammo_type.toUpperCase(), screenX, screenY + floatAmount + pickupSize / 2 + 20);
+                    }
+                    
+                    ctx.restore();
+                }
+            });
+        }
 
         setupControls();
         resetGame();
