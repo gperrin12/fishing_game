@@ -172,10 +172,19 @@ class Game:
         self.reset()
     
     def reset(self):
-        self.reset_game()
-    
-    def reset_game(self):
-        self.reset_game()
+        # Initialize game state properties
+        self.player = {
+            'x': 2.0,
+            'y': 2.0,
+            'angle': 0.0,
+            'lures': 10
+        }
+        self.fish = []
+        self.score = 0
+        self.game_over = False
+        
+        # Spawn initial fish
+        self.spawn_fish(5)
     
     def spawn_fish(self, count):
         for _ in range(count):
@@ -360,54 +369,22 @@ def change_lure():
 
 @app.route('/move', methods=['POST'])
 def move():
-    if game_state['game_over']:
-        return jsonify(game_state)
+    if game.game_over:
+        return jsonify(game.get_state())
 
     data = request.get_json()
     direction = data.get('direction')
-    shoot = data.get('shoot')
+    shoot = data.get('shoot', False)
+    amount = data.get('amount', 1)
     
-    # Move player boat (adjusted movement speed)
-    if direction == 'LEFT' and game_state['player']['x'] > 0:
-        game_state['player']['x'] -= 1
-    elif direction == 'RIGHT' and game_state['player']['x'] < GRID_WIDTH - 2:  # Adjusted for boat width
-        game_state['player']['x'] += 1
-
-    # Process automatic game updates only if no direction is specified
-    if direction is None:
-        # Update power-ups
-        for power_up in game_state['player']['power_ups'][:]:
-            power_up['duration'] -= 0.1
-            if power_up['duration'] <= 0:
-                game_state['player']['power_ups'].remove(power_up)
-                if power_up['effect'] == 'casting_speed':
-                    game_state['player']['casting_speed'] = 1.0
-                elif power_up['effect'] == 'lure_power':
-                    game_state['player']['lure_power'] = 1.0
-
-        # Update lure positions
-        for lure in game_state['player']['lures'][:]:
-            lure['y'] -= lure['speed']
-            if lure['y'] < 0:
-                game_state['player']['lures'].remove(lure)
-
-        # Spawn new fish and power-ups
-        if random.random() < 0.1:
-            spawn_fish()
-        
-        power_up = spawn_power_up()
-        if power_up:
-            game_state['fish'].append(power_up)
-
-        # Check for boss spawn
-        spawn_boss()
-
-        # Update fish and boss positions
-        update_fish_positions()
-        if game_state['boss']:
-            update_boss_position()
-
-    return jsonify(game_state)
+    if direction:
+        game.move_player(direction, amount)
+    
+    if shoot:
+        game.shoot()
+    
+    game.update()
+    return jsonify(game.get_state())
 
 def update_fish_positions():
     for fish in game_state['fish'][:]:
@@ -489,10 +466,8 @@ def update_boss_position():
 
 @app.route('/reset', methods=['POST'])
 def reset():
-    if game_state['game_over']:
-        save_high_score(game_state['score'])
-    reset_game()
-    return jsonify(game_state)
+    game.reset()
+    return jsonify(game.get_state())
 
 if __name__ == '__main__':
     reset_game()
