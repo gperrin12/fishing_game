@@ -896,100 +896,206 @@
             });
         }
 
+        // Global variable to track view mode
         let use3DView = true;
 
-        document.getElementById('toggleViewBtn').addEventListener('click', function() {
-            use3DView = !use3DView;
-            console.log(`View toggled: ${use3DView ? '3D' : '2D'} view`);
+        // Completely rewrite the toggle view functionality
+        function setupToggleView() {
+            const toggleBtn = document.getElementById('toggleViewBtn');
             
-            // Update button text to show current mode
-            this.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
+            // Set initial button text
+            toggleBtn.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
             
-            // Redraw the game with the new view
-            drawGame();
-        });
+            // Clear any existing event listeners
+            toggleBtn.replaceWith(toggleBtn.cloneNode(true));
+            
+            // Get the fresh button reference
+            const newToggleBtn = document.getElementById('toggleViewBtn');
+            
+            // Add event listener
+            newToggleBtn.addEventListener('click', function() {
+                use3DView = !use3DView;
+                console.log(`View toggled: ${use3DView ? '3D' : '2D'} view`);
+                
+                // Update button text
+                this.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
+                
+                // Force redraw
+                drawGame();
+            });
+        }
 
+        // Update the drawGame function to properly handle the view mode
         function drawGame() {
             try {
-                console.log("Drawing game...");
+                console.log(`Drawing game in ${use3DView ? '3D' : '2D'} mode...`);
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 if (use3DView) {
-                    try {
-                        drawWalls();
-                        
-                        if (gameState.power_ups) {
-                            drawPowerUps();
-                        }
-                        
-                        if (gameState.player && gameState.player.bullets) {
-                            drawBullets();
-                        }
-                        
-                        if (gameState.fish) {
-                            drawFish();
-                        }
-                        
-                        if (gameState.player && gameState.player.explosions) {
-                            drawExplosions();
-                        }
-                        
-                        drawWeapon();
-                        drawCrosshair();
-                    } catch (error) {
-                        console.error("Error in 3D view:", error);
-                        drawFallbackView();
-                        return;
+                    // 3D view
+                    drawWalls();
+                    
+                    if (gameState.fish) {
+                        drawFish();
                     }
+                    
+                    if (gameState.player && gameState.player.bullets) {
+                        drawBullets();
+                    }
+                    
+                    if (gameState.player && gameState.player.explosions) {
+                        drawExplosions();
+                    }
+                    
+                    if (gameState.power_ups) {
+                        drawPowerUps();
+                    }
+                    
+                    if (gameState.pickups) {
+                        drawPickups();
+                    }
+                    
+                    drawWeapon();
+                    drawCrosshair();
                 } else {
-                    drawFallbackView();
-                    return;
+                    // 2D top-down view
+                    draw2DView();
                 }
                 
-                // Update UI
-                document.getElementById('score').textContent = `Score: ${gameState.score}`;
+                // Update UI elements
+                updateUI();
+                
+            } catch (error) {
+                console.error("Error drawing game:", error);
+                draw2DView(); // Fallback to 2D view on error
+            }
+        }
+
+        // Add a 2D top-down view function
+        function draw2DView() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const cellSize = Math.min(width, height) / 20;
+            
+            // Draw background
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw grid
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            
+            // Draw walls
+            for (let y = 0; y < MAP.length; y++) {
+                for (let x = 0; x < MAP[y].length; x++) {
+                    if (MAP[y][x] > 0) {
+                        // Wall cell
+                        ctx.fillStyle = getWallColor(MAP[y][x]);
+                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    } else {
+                        // Empty cell
+                        ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+            
+            // Draw player
+            if (gameState.player) {
+                ctx.fillStyle = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(
+                    gameState.player.x * cellSize, 
+                    gameState.player.y * cellSize, 
+                    cellSize / 2, 
+                    0, 
+                    2 * Math.PI
+                );
+                ctx.fill();
+                
+                // Draw player direction
+                const dirX = Math.cos(gameState.player.angle) * cellSize;
+                const dirY = Math.sin(gameState.player.angle) * cellSize;
+                
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(gameState.player.x * cellSize, gameState.player.y * cellSize);
+                ctx.lineTo(
+                    gameState.player.x * cellSize + dirX,
+                    gameState.player.y * cellSize + dirY
+                );
+                ctx.stroke();
+            }
+            
+            // Draw fish
+            if (gameState.fish) {
+                gameState.fish.forEach(fish => {
+                    ctx.fillStyle = FISH_TYPES[fish.type].color;
+                    ctx.beginPath();
+                    ctx.arc(
+                        fish.x * cellSize, 
+                        fish.y * cellSize, 
+                        cellSize / 3, 
+                        0, 
+                        2 * Math.PI
+                    );
+                    ctx.fill();
+                });
+            }
+            
+            // Draw bullets
+            if (gameState.player && gameState.player.bullets) {
+                ctx.fillStyle = '#ff0000';
+                gameState.player.bullets.forEach(bullet => {
+                    ctx.beginPath();
+                    ctx.arc(
+                        bullet.x * cellSize, 
+                        bullet.y * cellSize, 
+                        cellSize / 6, 
+                        0, 
+                        2 * Math.PI
+                    );
+                    ctx.fill();
+                });
+            }
+        }
+
+        // Helper function to get wall color based on wall type
+        function getWallColor(wallType) {
+            switch(wallType) {
+                case 1: return '#8b0000';  // Dark red for stone walls
+                case 2: return '#4682b4';  // Steel blue for tech walls
+                case 3: return '#006400';  // Dark green for slime walls
+                case 4: return '#8b0000';  // Dark red for blood walls
+                case 5: return '#708090';  // Slate gray for metal walls
+                default: return '#8b0000';  // Default to dark red
+            }
+        }
+
+        // Update UI elements
+        function updateUI() {
+            // Update score
+            document.getElementById('score').textContent = `Score: ${gameState.score}`;
+            
+            // Update health
+            if (gameState.player && gameState.player.health !== undefined) {
+                document.getElementById('ammo').textContent = `Health: ${gameState.player.health}`;
                 
                 // Update health bar
                 const healthPercent = gameState.player.health / 100;
                 document.getElementById('healthFill').style.width = `${healthPercent * 100}%`;
-                
-                // Update ammo display
-                if (gameState.player.ammo) {
-                    document.getElementById('bulletAmmo').textContent = gameState.player.ammo.bullets || 0;
-                    document.getElementById('shellAmmo').textContent = gameState.player.ammo.shells || 0;
-                    document.getElementById('cellAmmo').textContent = gameState.player.ammo.cells || 0;
-                }
-                
-                // Update weapon buttons
-                document.querySelectorAll('.weapon-btn').forEach(btn => {
-                    const weapon = btn.dataset.weapon;
-                    
-                    // Disable buttons for weapons the player doesn't have
-                    if (gameState.player.weapons && !gameState.player.weapons.includes(weapon)) {
-                        btn.disabled = true;
-                        btn.style.opacity = 0.5;
-                    } else {
-                        btn.disabled = false;
-                        btn.style.opacity = 1;
-                    }
-                    
-                    // Highlight the current weapon
-                    if (weapon === gameState.player.current_weapon) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                });
-                
-                if (gameState.game_over) {
-                    document.getElementById('gameOver').style.display = 'block';
-                    clearInterval(gameInterval);
-                }
-                
-                console.log("Game drawn successfully");
-            } catch (error) {
-                console.error("Error drawing game:", error);
-                drawFallbackView();
+            }
+            
+            // Update ammo display
+            if (gameState.player && gameState.player.ammo) {
+                document.getElementById('bulletAmmo').textContent = gameState.player.ammo.bullets || 0;
+                document.getElementById('shellAmmo').textContent = gameState.player.ammo.shells || 0;
+                document.getElementById('cellAmmo').textContent = gameState.player.ammo.cells || 0;
+            }
+            
+            // Check for game over
+            if (gameState.game_over) {
+                document.getElementById('gameOver').style.display = 'block';
             }
         }
 
@@ -1278,154 +1384,6 @@
                 .catch(error => console.error('Error resetting game:', error));
         }
 
-        function drawFallbackView() {
-            console.log("Drawing fallback view");
-            const width = canvas.width;
-            const height = canvas.height;
-            
-            // Clear the canvas
-            ctx.clearRect(0, 0, width, height);
-            
-            // Draw a simple background
-            ctx.fillStyle = '#87CEEB';  // Sky blue
-            ctx.fillRect(0, 0, width, height/2);
-            
-            ctx.fillStyle = '#0077be';  // Water blue
-            ctx.fillRect(0, height/2, width, height/2);
-            
-            // Draw a simple grid to represent the map
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
-            
-            const cellSize = 20;
-            for (let y = 0; y < MAP.length; y++) {
-                for (let x = 0; x < MAP[0].length; x++) {
-                    const screenX = x * cellSize;
-                    const screenY = y * cellSize;
-                    
-                    if (MAP[y][x] === 1) {
-                        ctx.fillStyle = '#006400';  // Dark green for walls
-                        ctx.fillRect(screenX, screenY, cellSize, cellSize);
-                    }
-                    
-                    ctx.strokeRect(screenX, screenY, cellSize, cellSize);
-                }
-            }
-            
-            // Draw player position
-            if (gameState && gameState.player) {
-                const playerX = gameState.player.x * cellSize;
-                const playerY = gameState.player.y * cellSize;
-                
-                ctx.fillStyle = '#ff0000';  // Red for player
-                ctx.beginPath();
-                ctx.arc(playerX, playerY, 5, 0, 2 * Math.PI);
-                ctx.fill();
-                
-                // Draw direction line
-                const dirX = playerX + Math.cos(gameState.player.angle) * 10;
-                const dirY = playerY + Math.sin(gameState.player.angle) * 10;
-                
-                ctx.strokeStyle = '#ff0000';
-                ctx.beginPath();
-                ctx.moveTo(playerX, playerY);
-                ctx.lineTo(dirX, dirY);
-                ctx.stroke();
-            }
-            
-            // Draw fish positions
-            if (gameState && gameState.fish) {
-                gameState.fish.forEach(fish => {
-                    const fishX = fish.x * cellSize;
-                    const fishY = fish.y * cellSize;
-                    
-                    ctx.fillStyle = FISH_TYPES[fish.type].color;
-                    ctx.beginPath();
-                    ctx.arc(fishX, fishY, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                });
-            }
-            
-            // Draw a message
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '20px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('Fallback View - Check Console for Errors', width/2, 30);
-        }
-
-        document.getElementById('spawnFishBtn').addEventListener('click', spawnFish);
-
-        function spawnFish() {
-            console.log("Manually spawning fish");
-            
-            fetch('/spawn-fish', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ count: 1 })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log("Fish spawned:", data);
-                updateGame(data);
-            })
-            .catch(error => {
-                console.error('Error spawning fish:', error);
-                
-                // Create a local fish if server request fails
-                if (gameState) {
-                    if (!gameState.fish) {
-                        gameState.fish = [];
-                    }
-                    
-                    // Add a new fish at a random position
-                    const fishTypes = Object.keys(FISH_TYPES);
-                    const randomType = fishTypes[Math.floor(Math.random() * fishTypes.length)];
-                    
-                    // Find a valid position (not in a wall and not too close to player)
-                    let x, y, valid = false;
-                    while (!valid) {
-                        x = 1 + Math.random() * (MAP[0].length - 2);
-                        y = 1 + Math.random() * (MAP.length - 2);
-                        
-                        // Check if position is in a wall
-                        if (MAP[Math.floor(y)][Math.floor(x)] !== 0) {
-                            continue;
-                        }
-                        
-                        // Check if too close to player
-                        const dist = Math.sqrt(
-                            Math.pow(x - gameState.player.x, 2) + 
-                            Math.pow(y - gameState.player.y, 2)
-                        );
-                        if (dist < 5) {
-                            continue;
-                        }
-                        
-                        valid = true;
-                    }
-                    
-                    gameState.fish.push({
-                        x: x,
-                        y: y,
-                        type: randomType,
-                        health: FISH_TYPES[randomType].health,
-                        direction: Math.random() * 2 * Math.PI,
-                        speed: FISH_TYPES[randomType].speed,
-                        state: 'patrol',
-                        state_timer: 50 + Math.random() * 100
-                    });
-                    
-                    console.log("Locally spawned fish:", gameState.fish[gameState.fish.length - 1]);
-                    drawGame();
-                }
-            });
-        }
-
         function drawCrosshair() {
             const width = canvas.width;
             const height = canvas.height;
@@ -1701,6 +1659,7 @@
 
         setupControls();
         resetGame();
+        setupToggleView();
     </script>
 </body>
 </html>
