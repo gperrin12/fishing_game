@@ -68,10 +68,10 @@ LURE_TYPES = {
 }
 
 FISH_TYPES = {
-    'bluegill': {'speed': 0.03, 'health': 1, 'damage': 1},
-    'bass': {'speed': 0.02, 'health': 2, 'damage': 2},
-    'pike': {'speed': 0.04, 'health': 1, 'damage': 3},
-    'muskie': {'speed': 0.01, 'health': 4, 'damage': 5}
+    'bluegill': {'speed': 0.03, 'health': 1, 'damage': 1, 'points': 10},
+    'bass': {'speed': 0.02, 'health': 2, 'damage': 2, 'points': 20},
+    'pike': {'speed': 0.04, 'health': 1, 'damage': 3, 'points': 15},
+    'muskie': {'speed': 0.01, 'health': 4, 'damage': 5, 'points': 30}
 }
 
 POWER_UPS = {
@@ -281,7 +281,7 @@ class Game:
                     fish['health'] -= 1
                     if fish['health'] <= 0:
                         # Fish is caught
-                        self.score += 10
+                        self.score += FISH_TYPES[fish['type']]['points']
                         self.fish.pop(i)
                         # Spawn a new fish
                         self.spawn_fish(1)
@@ -291,7 +291,7 @@ class Game:
     
     def update(self):
         # Move fish
-        for fish in self.fish:
+        for fish in self.fish[:]:
             # Occasionally change direction
             if random.random() < 0.02:
                 fish['direction'] = random.uniform(0, 2 * math.pi)
@@ -466,9 +466,10 @@ def update_boss_position():
 
 @app.route('/reset', methods=['POST'])
 def reset():
+    if game.game_over:
+        save_high_score(game.score)
     game.reset()
     return jsonify(game.get_state())
 
 if __name__ == '__main__':
-    reset_game()
     app.run(host='0.0.0.0', port=5000)
