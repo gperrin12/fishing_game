@@ -516,6 +516,7 @@ class Game:
         return {
             'player': self.player,
             'fish': self.fish,
+            'power_ups': self.power_ups,
             'score': self.score,
             'game_over': self.game_over
         }

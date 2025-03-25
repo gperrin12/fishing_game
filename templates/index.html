@@ -153,10 +153,10 @@
         
         // Fish types with properties
         const FISH_TYPES = {
-            'bluegill': { color: '#4169E1', speed: 0.03, health: 1, damage: 1 },
-            'bass': { color: '#006400', speed: 0.02, health: 2, damage: 2 },
-            'pike': { color: '#8B4513', speed: 0.04, health: 1, damage: 3 },
-            'muskie': { color: '#DC143C', speed: 0.01, health: 4, damage: 5 }
+            'bluegill': { color: '#4169E1', speed: 0.03, health: 1, damage: 1, points: 10 },
+            'bass': { color: '#006400', speed: 0.02, health: 2, damage: 2, points: 20 },
+            'pike': { color: '#8B4513', speed: 0.04, health: 1, damage: 3, points: 15 },
+            'muskie': { color: '#DC143C', speed: 0.01, health: 4, damage: 5, points: 30 }
         };
         
         // Map definition (1 = wall, 0 = empty)
@@ -760,6 +760,7 @@
         }
 
         function updateGame(newState) {
+            console.log("Received game state:", newState);
             gameState = newState;
             drawGame();
         }
