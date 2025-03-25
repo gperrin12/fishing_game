@@ -337,15 +337,16 @@ class Game:
                 self.player['bullets'].remove(bullet)
                 continue
             
-            # Check if bullet hit a fish
+            # Check if bullet hit a fish - IMPROVED COLLISION DETECTION
             for i, fish in enumerate(self.fish):
                 dx = fish['x'] - bullet['x']
                 dy = fish['y'] - bullet['y']
                 dist = math.sqrt(dx**2 + dy**2)
                 
-                if dist < 0.5:  # Hit radius
+                # Increased hit radius to make hitting fish easier
+                if dist < 1.0:  # Increased from 0.5
                     # Hit the fish
-                    fish['health'] -= 1
+                    fish['health'] -= bullet.get('damage', 1) * self.player['lure_power']
                     
                     # Create explosion
                     self.player['explosions'].append({
@@ -398,7 +399,7 @@ class Game:
                     fish['direction'] = random.uniform(0, 2 * math.pi)
                 
                 # Move fish in its direction
-                speed = fish['speed'] * 0.7  # Slower when patrolling
+                speed = fish['speed'] * 0.5  # Slower when patrolling - REDUCED SPEED
                 new_x = fish['x'] + math.cos(fish['direction']) * speed
                 new_y = fish['y'] + math.sin(fish['direction']) * speed
                 
@@ -412,7 +413,7 @@ class Game:
                 angle += random.uniform(-0.1, 0.1)
                 
                 # Move toward player
-                speed = fish['speed'] * 1.8  # Faster when chasing
+                speed = fish['speed'] * 1.2  # Faster when chasing - REDUCED SPEED
                 new_x = fish['x'] + math.cos(angle) * speed
                 new_y = fish['y'] + math.sin(angle) * speed
                 

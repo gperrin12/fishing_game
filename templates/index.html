@@ -391,7 +391,7 @@
                 const fishDist = Math.sqrt(dx * dx + dy * dy);
                 
                 // Play splash sound occasionally for nearby fish
-                if (fishDist < 10 && Math.random() < 0.005) {
+                if (fishDist < 10 && Math.random() < 0.01) {  // Increased frequency
                     const splashSound = document.getElementById('splashSound');
                     splashSound.volume = Math.min(1.0, 8 / fishDist) * 0.4;
                     splashSound.currentTime = 0;
@@ -400,15 +400,14 @@
                 
                 // Check if fish is in field of view
                 if (Math.abs(fishAngle - gameState.player.angle) < player.fov / 2) {
-                    // Calculate fish size based on distance
-                    const fishSize = Math.min(height / 2.5, 6000 / fishDist);
+                    // Calculate fish size based on distance - INCREASED SIZE
+                    const fishSize = Math.min(height / 2, 8000 / fishDist);
                     
                     // Calculate screen position
                     const angleToCenter = fishAngle - gameState.player.angle;
                     const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
                     
                     // Calculate vertical position based on distance (closer fish appear lower)
-                    // This creates the illusion that fish are swimming at eye level
                     const screenY = height / 2 + (fishDist < 3 ? 20 : 0);
                     
                     // Draw fish shadow on floor
@@ -417,79 +416,71 @@
                     ctx.ellipse(screenX, height / 2 + fishSize/2, fishSize / 3, fishSize / 6, 0, 0, 2 * Math.PI);
                     ctx.fill();
                     
-                    // Draw fish with sprite-like appearance
-                    ctx.save();
-                    
                     // Add "bobbing" motion to simulate swimming
                     const bobAmount = Math.sin(Date.now() / 300 + fish.x * 10) * 5;
                     
                     // Determine if fish is facing left or right relative to player
                     const fishFacingRight = Math.cos(fish.direction - fishAngle) > 0;
                     
-                    // Draw fish body with glow effect
+                    // Draw fish with enhanced visibility
+                    ctx.save();
+                    
+                    // Add glow effect for better visibility
                     ctx.shadowColor = FISH_TYPES[fish.type].color;
-                    ctx.shadowBlur = 15;
+                    ctx.shadowBlur = 20;  // Increased blur
                     ctx.fillStyle = FISH_TYPES[fish.type].color;
                     
-                    // Draw fish body
+                    // Draw fish body with increased size
                     ctx.beginPath();
                     if (fishFacingRight) {
                         // Fish facing right
-                        ctx.ellipse(screenX, screenY + bobAmount, fishSize / 2, fishSize / 3, 0, 0, 2 * Math.PI);
-                        ctx.fill();
-                        
-                        // Draw fish eye
-                        ctx.shadowBlur = 0;
-                        ctx.fillStyle = '#000';
-                        ctx.beginPath();
+                        ctx.ellipse(screenX, screenY + bobAmount, fishSize / 1.8, fishSize / 2.5, 0, 0, 2 * Math.PI);
+                    } else {
+                        // Fish facing left
+                        ctx.ellipse(screenX, screenY + bobAmount, fishSize / 1.8, fishSize / 2.5, 0, 0, 2 * Math.PI);
+                    }
+                    ctx.fill();
+                    
+                    // Draw fish details
+                    // Draw fish eye
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath();
+                    if (fishFacingRight) {
                         ctx.arc(screenX + fishSize / 4, screenY + bobAmount - fishSize / 8, fishSize / 15, 0, 2 * Math.PI);
-                        ctx.fill();
-                        
-                        // Draw fish tail
-                        ctx.fillStyle = FISH_TYPES[fish.type].color;
-                        ctx.beginPath();
+                    } else {
+                        ctx.arc(screenX - fishSize / 4, screenY + bobAmount - fishSize / 8, fishSize / 15, 0, 2 * Math.PI);
+                    }
+                    ctx.fill();
+                    
+                    // Draw fish tail
+                    ctx.fillStyle = FISH_TYPES[fish.type].color;
+                    ctx.beginPath();
+                    if (fishFacingRight) {
                         ctx.moveTo(screenX - fishSize / 3, screenY + bobAmount);
                         ctx.lineTo(screenX - fishSize / 1.5, screenY + bobAmount - fishSize / 4);
                         ctx.lineTo(screenX - fishSize / 1.5, screenY + bobAmount + fishSize / 4);
-                        ctx.closePath();
-                        ctx.fill();
-                        
-                        // Draw fins
-                        ctx.beginPath();
-                        ctx.moveTo(screenX, screenY + bobAmount - fishSize / 6);
-                        ctx.lineTo(screenX + fishSize / 6, screenY + bobAmount - fishSize / 3);
-                        ctx.lineTo(screenX - fishSize / 6, screenY + bobAmount - fishSize / 3);
-                        ctx.closePath();
-                        ctx.fill();
                     } else {
-                        // Fish facing left
-                        ctx.ellipse(screenX, screenY + bobAmount, fishSize / 2, fishSize / 3, 0, 0, 2 * Math.PI);
-                        ctx.fill();
-                        
-                        // Draw fish eye
-                        ctx.shadowBlur = 0;
-                        ctx.fillStyle = '#000';
-                        ctx.beginPath();
-                        ctx.arc(screenX - fishSize / 4, screenY + bobAmount - fishSize / 8, fishSize / 15, 0, 2 * Math.PI);
-                        ctx.fill();
-                        
-                        // Draw fish tail
-                        ctx.fillStyle = FISH_TYPES[fish.type].color;
-                        ctx.beginPath();
                         ctx.moveTo(screenX + fishSize / 3, screenY + bobAmount);
                         ctx.lineTo(screenX + fishSize / 1.5, screenY + bobAmount - fishSize / 4);
                         ctx.lineTo(screenX + fishSize / 1.5, screenY + bobAmount + fishSize / 4);
-                        ctx.closePath();
-                        ctx.fill();
-                        
-                        // Draw fins
-                        ctx.beginPath();
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Draw fins
+                    ctx.beginPath();
+                    if (fishFacingRight) {
+                        ctx.moveTo(screenX, screenY + bobAmount - fishSize / 6);
+                        ctx.lineTo(screenX + fishSize / 6, screenY + bobAmount - fishSize / 3);
+                        ctx.lineTo(screenX - fishSize / 6, screenY + bobAmount - fishSize / 3);
+                    } else {
                         ctx.moveTo(screenX, screenY + bobAmount - fishSize / 6);
                         ctx.lineTo(screenX - fishSize / 6, screenY + bobAmount - fishSize / 3);
                         ctx.lineTo(screenX + fishSize / 6, screenY + bobAmount - fishSize / 3);
-                        ctx.closePath();
-                        ctx.fill();
                     }
+                    ctx.closePath();
+                    ctx.fill();
                     
                     // Draw mouth
                     ctx.fillStyle = '#600';
@@ -855,6 +846,9 @@
                         console.error("Error drawing power-up HUD:", error);
                     }
                 }
+                
+                // Draw crosshair
+                drawCrosshair();
                 
                 // Update UI
                 document.getElementById('score').textContent = `Score: ${gameState.score}`;
@@ -1248,6 +1242,71 @@
                     drawGame();
                 }
             });
+        }
+
+        function drawCrosshair() {
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Check if any fish is in the crosshair
+            let fishInCrosshair = false;
+            
+            if (gameState.fish) {
+                gameState.fish.forEach(fish => {
+                    // Calculate fish position relative to player
+                    const dx = fish.x - gameState.player.x;
+                    const dy = fish.y - gameState.player.y;
+                    
+                    // Calculate angle to fish
+                    let fishAngle = Math.atan2(dy, dx);
+                    
+                    // Normalize angles
+                    while (fishAngle - gameState.player.angle > Math.PI) fishAngle -= 2 * Math.PI;
+                    while (fishAngle - gameState.player.angle < -Math.PI) fishAngle += 2 * Math.PI;
+                    
+                    // Calculate fish distance
+                    const fishDist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Check if fish is in center of view (crosshair)
+                    if (Math.abs(fishAngle - gameState.player.angle) < 0.05 && fishDist < 10) {
+                        fishInCrosshair = true;
+                    }
+                });
+            }
+            
+            // Draw crosshair (red if fish in crosshair, white otherwise)
+            ctx.strokeStyle = fishInCrosshair ? 'rgba(255, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 2;
+            
+            // Horizontal line
+            ctx.beginPath();
+            ctx.moveTo(width/2 - 10, height/2);
+            ctx.lineTo(width/2 + 10, height/2);
+            ctx.stroke();
+            
+            // Vertical line
+            ctx.beginPath();
+            ctx.moveTo(width/2, height/2 - 10);
+            ctx.lineTo(width/2, height/2 + 10);
+            ctx.stroke();
+            
+            // Circle
+            ctx.beginPath();
+            ctx.arc(width/2, height/2, 5, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // If fish in crosshair, add a "target locked" indicator
+            if (fishInCrosshair) {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(width/2, height/2, 20, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.font = '12px Arial';
+                ctx.fillStyle = '#ff0000';
+                ctx.textAlign = 'center';
+                ctx.fillText('TARGET LOCKED', width/2, height/2 + 30);
+            }
         }
 
         setupControls();
