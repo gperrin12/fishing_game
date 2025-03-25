@@ -133,6 +133,7 @@
         <button class="control-btn" id="rightBtn">→</button>
         <button class="control-btn" id="backwardBtn">↓</button>
         <button class="control-btn" id="resetBtn">New Game</button>
+        <button class="control-btn" id="toggleViewBtn" style="background-color: #9c27b0;">Toggle View</button>
     </div>
 
     <audio id="splashSound" src="https://assets.mixkit.co/sfx/preview/mixkit-water-splash-1295.mp3" preload="auto"></audio>
@@ -209,75 +210,97 @@
         window.addEventListener('resize', resizeCanvas);
 
         function castRay(angle) {
-            // Ray casting algorithm to find walls
-            const rayDirX = Math.cos(angle);
-            const rayDirY = Math.sin(angle);
-            
-            let mapX = Math.floor(gameState.player.x);
-            let mapY = Math.floor(gameState.player.y);
-            
-            // Calculate distance to next x or y grid line
-            let deltaDistX = Math.abs(1 / rayDirX);
-            let deltaDistY = Math.abs(1 / rayDirY);
-            
-            let stepX, stepY;
-            let sideDistX, sideDistY;
-            
-            // Calculate step and initial sideDist
-            if (rayDirX < 0) {
-                stepX = -1;
-                sideDistX = (gameState.player.x - mapX) * deltaDistX;
-            } else {
-                stepX = 1;
-                sideDistX = (mapX + 1.0 - gameState.player.x) * deltaDistX;
-            }
-            
-            if (rayDirY < 0) {
-                stepY = -1;
-                sideDistY = (gameState.player.y - mapY) * deltaDistY;
-            } else {
-                stepY = 1;
-                sideDistY = (mapY + 1.0 - gameState.player.y) * deltaDistY;
-            }
-            
-            // DDA algorithm
-            let hit = 0;
-            let side;
-            
-            while (hit === 0) {
-                // Jump to next map square
-                if (sideDistX < sideDistY) {
-                    sideDistX += deltaDistX;
-                    mapX += stepX;
-                    side = 0;
+            try {
+                // Ray casting algorithm to find walls
+                const rayDirX = Math.cos(angle);
+                const rayDirY = Math.sin(angle);
+                
+                let mapX = Math.floor(gameState.player.x);
+                let mapY = Math.floor(gameState.player.y);
+                
+                // Calculate distance to next x or y grid line
+                let deltaDistX = Math.abs(1 / (rayDirX || 0.00001));
+                let deltaDistY = Math.abs(1 / (rayDirY || 0.00001));
+                
+                let stepX, stepY;
+                let sideDistX, sideDistY;
+                
+                // Calculate step and initial sideDist
+                if (rayDirX < 0) {
+                    stepX = -1;
+                    sideDistX = (gameState.player.x - mapX) * deltaDistX;
                 } else {
-                    sideDistY += deltaDistY;
-                    mapY += stepY;
-                    side = 1;
+                    stepX = 1;
+                    sideDistX = (mapX + 1.0 - gameState.player.x) * deltaDistX;
                 }
                 
-                // Check if ray has hit a wall
-                if (mapX < 0 || mapY < 0 || mapX >= MAP[0].length || mapY >= MAP.length) {
-                    hit = 1;
-                } else if (MAP[mapY][mapX] > 0) {
-                    hit = 1;
+                if (rayDirY < 0) {
+                    stepY = -1;
+                    sideDistY = (gameState.player.y - mapY) * deltaDistY;
+                } else {
+                    stepY = 1;
+                    sideDistY = (mapY + 1.0 - gameState.player.y) * deltaDistY;
                 }
+                
+                // Perform DDA
+                let hit = 0;
+                let side = 0;
+                let maxDistance = 20; // Maximum ray distance
+                let distance = 0;
+                
+                while (hit === 0 && distance < maxDistance) {
+                    // Jump to next map square
+                    if (sideDistX < sideDistY) {
+                        sideDistX += deltaDistX;
+                        mapX += stepX;
+                        side = 0;
+                    } else {
+                        sideDistY += deltaDistY;
+                        mapY += stepY;
+                        side = 1;
+                    }
+                    
+                    distance += 1;
+                    
+                    // Check if ray has hit a wall
+                    if (mapY < 0 || mapX < 0 || mapY >= MAP.length || mapX >= MAP[0].length) {
+                        hit = 1; // Hit map boundary
+                    } else if (MAP[mapY][mapX] > 0) {
+                        hit = 1; // Hit wall
+                    }
+                }
+                
+                // Calculate distance projected on camera direction
+                let perpWallDist;
+                if (side === 0) {
+                    perpWallDist = (mapX - gameState.player.x + (1 - stepX) / 2) / rayDirX;
+                } else {
+                    perpWallDist = (mapY - gameState.player.y + (1 - stepY) / 2) / rayDirY;
+                }
+                
+                // Ensure we don't return infinity or NaN
+                perpWallDist = Math.max(0.1, perpWallDist || 0.1);
+                
+                return {
+                    distance: perpWallDist,
+                    side: side,
+                    mapX: mapX,
+                    mapY: mapY,
+                    stepX: stepX,
+                    stepY: stepY
+                };
+            } catch (error) {
+                console.error("Error in castRay:", error);
+                // Return a default value to prevent crashes
+                return {
+                    distance: 5,
+                    side: 0,
+                    mapX: 0,
+                    mapY: 0,
+                    stepX: 1,
+                    stepY: 1
+                };
             }
-            
-            // Calculate distance projected on camera direction
-            let perpWallDist;
-            if (side === 0) {
-                perpWallDist = (mapX - gameState.player.x + (1 - stepX) / 2) / rayDirX;
-            } else {
-                perpWallDist = (mapY - gameState.player.y + (1 - stepY) / 2) / rayDirY;
-            }
-            
-            return {
-                distance: perpWallDist,
-                side: side,
-                mapX: mapX,
-                mapY: mapY
-            };
         }
 
         function drawWalls() {
@@ -756,38 +779,80 @@
             });
         }
 
+        let use3DView = true;
+
+        document.getElementById('toggleViewBtn').addEventListener('click', () => {
+            use3DView = !use3DView;
+            drawGame();
+        });
+
         function drawGame() {
             try {
                 console.log("Drawing game...");
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                drawWalls();
+                if (use3DView) {
+                    try {
+                        drawWalls();
+                    } catch (error) {
+                        console.error("Error in 3D view:", error);
+                        drawFallbackView();
+                        return;
+                    }
+                } else {
+                    drawFallbackView();
+                    return;
+                }
                 
                 if (gameState.power_ups) {
                     console.log("Drawing power-ups:", gameState.power_ups.length);
-                    drawPowerUps();
+                    try {
+                        drawPowerUps();
+                    } catch (error) {
+                        console.error("Error drawing power-ups:", error);
+                    }
                 }
                 
                 if (gameState.player && gameState.player.bullets) {
                     console.log("Drawing bullets:", gameState.player.bullets.length);
-                    drawBullets();
+                    try {
+                        drawBullets();
+                    } catch (error) {
+                        console.error("Error drawing bullets:", error);
+                    }
                 }
                 
                 if (gameState.fish) {
                     console.log("Drawing fish:", gameState.fish.length);
-                    drawFish();
+                    try {
+                        drawFish();
+                    } catch (error) {
+                        console.error("Error drawing fish:", error);
+                    }
                 }
                 
                 if (gameState.player && gameState.player.explosions) {
                     console.log("Drawing explosions:", gameState.player.explosions.length);
-                    drawExplosions();
+                    try {
+                        drawExplosions();
+                    } catch (error) {
+                        console.error("Error drawing explosions:", error);
+                    }
                 }
                 
-                drawWeapon();
+                try {
+                    drawWeapon();
+                } catch (error) {
+                    console.error("Error drawing weapon:", error);
+                }
                 
                 if (gameState.player && gameState.player.power_ups) {
                     console.log("Drawing power-up HUD:", gameState.player.power_ups.length);
-                    drawPowerUpHUD();
+                    try {
+                        drawPowerUpHUD();
+                    } catch (error) {
+                        console.error("Error drawing power-up HUD:", error);
+                    }
                 }
                 
                 // Update UI
@@ -802,6 +867,7 @@
                 console.log("Game drawn successfully");
             } catch (error) {
                 console.error("Error drawing game:", error);
+                drawFallbackView();
             }
         }
 
@@ -947,6 +1013,81 @@
                     }, 50);
                 })
                 .catch(error => console.error('Error resetting game:', error));
+        }
+
+        function drawFallbackView() {
+            console.log("Drawing fallback view");
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear the canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw a simple background
+            ctx.fillStyle = '#87CEEB';  // Sky blue
+            ctx.fillRect(0, 0, width, height/2);
+            
+            ctx.fillStyle = '#0077be';  // Water blue
+            ctx.fillRect(0, height/2, width, height/2);
+            
+            // Draw a simple grid to represent the map
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            
+            const cellSize = 20;
+            for (let y = 0; y < MAP.length; y++) {
+                for (let x = 0; x < MAP[0].length; x++) {
+                    const screenX = x * cellSize;
+                    const screenY = y * cellSize;
+                    
+                    if (MAP[y][x] === 1) {
+                        ctx.fillStyle = '#006400';  // Dark green for walls
+                        ctx.fillRect(screenX, screenY, cellSize, cellSize);
+                    }
+                    
+                    ctx.strokeRect(screenX, screenY, cellSize, cellSize);
+                }
+            }
+            
+            // Draw player position
+            if (gameState && gameState.player) {
+                const playerX = gameState.player.x * cellSize;
+                const playerY = gameState.player.y * cellSize;
+                
+                ctx.fillStyle = '#ff0000';  // Red for player
+                ctx.beginPath();
+                ctx.arc(playerX, playerY, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Draw direction line
+                const dirX = playerX + Math.cos(gameState.player.angle) * 10;
+                const dirY = playerY + Math.sin(gameState.player.angle) * 10;
+                
+                ctx.strokeStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.moveTo(playerX, playerY);
+                ctx.lineTo(dirX, dirY);
+                ctx.stroke();
+            }
+            
+            // Draw fish positions
+            if (gameState && gameState.fish) {
+                gameState.fish.forEach(fish => {
+                    const fishX = fish.x * cellSize;
+                    const fishY = fish.y * cellSize;
+                    
+                    ctx.fillStyle = FISH_TYPES[fish.type].color;
+                    ctx.beginPath();
+                    ctx.arc(fishX, fishY, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                });
+            }
+            
+            // Draw a message
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Fallback View - Check Console for Errors', width/2, 30);
         }
 
         setupControls();
