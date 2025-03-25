@@ -481,12 +481,12 @@ class Game:
         self.player['bullets'].append(bullet)
     
     def update(self):
-        # Ensure lures is a list
+        # Ensure lures is an integer
         if 'lures' not in self.player:
-            self.player['lures'] = []
-        
+            self.player['lures'] = 10  # Default starting count
+
         # Check if there are no lures and fish exist
-        if len(self.player['lures']) <= 0 and len(self.fish) > 0:
+        if self.player['lures'] <= 0 and len(self.fish) > 0:
             # Your logic here
             pass
 
