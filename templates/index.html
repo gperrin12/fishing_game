@@ -211,6 +211,33 @@
     <audio id="hitSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-explosion-2759.mp3" preload="auto"></audio>
 
     <script>
+        // Debug mode
+        const DEBUG = true;
+        
+        // Function to log debug messages
+        function debug(message) {
+            if (DEBUG) {
+                console.log(`[DEBUG] ${message}`);
+            }
+        }
+        
+        // Verify canvas and context
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('gameCanvas');
+            if (!canvas) {
+                console.error("Canvas element not found!");
+                return;
+            }
+            
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error("Could not get 2D context!");
+                return;
+            }
+            
+            debug("Canvas and context initialized successfully");
+        });
+
         console.log("Script starting...");
         
         const canvas = document.getElementById('gameCanvas');
@@ -375,110 +402,34 @@
         }
 
         function drawWalls() {
-            const width = canvas.width;
-            const height = canvas.height;
-            
-            // Draw sky
-            const skyGradient = ctx.createLinearGradient(0, 0, 0, height/2);
-            skyGradient.addColorStop(0, "#4a0000");  // Dark red for Doom-like sky
-            skyGradient.addColorStop(1, "#700000");  // Lighter red
-            ctx.fillStyle = skyGradient;
-            ctx.fillRect(0, 0, width, height/2);
-            
-            // Draw ground
-            const groundGradient = ctx.createLinearGradient(0, height/2, 0, height);
-            groundGradient.addColorStop(0, "#302020");  // Dark brown
-            groundGradient.addColorStop(1, "#201010");  // Darker brown
-            ctx.fillStyle = groundGradient;
-            ctx.fillRect(0, height/2, width, height/2);
-            
-            // Draw walls
-            const numRays = width;
-            const rayWidth = width / numRays;
-            
-            for (let x = 0; x < numRays; x++) {
-                // Calculate ray angle
-                const rayAngle = gameState.player.angle - player.fov/2 + (x / numRays) * player.fov;
+            try {
+                debug("Drawing walls");
+                const width = canvas.width;
+                const height = canvas.height;
                 
-                // Cast ray
-                const result = castRay(rayAngle);
+                // Draw sky
+                ctx.fillStyle = "#4a0000";  // Dark red for Doom-like sky
+                ctx.fillRect(0, 0, width, height/2);
                 
-                if (!result) continue;
+                // Draw ground
+                ctx.fillStyle = "#201010";  // Dark brown
+                ctx.fillRect(0, height/2, width, height/2);
                 
-                // Calculate wall height
-                const wallDist = result.distance;
-                const wallHeight = Math.min(height, height / wallDist * 2);
+                // Draw a simple wall pattern
+                ctx.fillStyle = "#8b0000";  // Wall color
                 
-                // Draw wall
-                const wallY = (height - wallHeight) / 2;
+                // Draw a corridor
+                ctx.fillRect(0, height/2 - 100, width, 20);        // Ceiling
+                ctx.fillRect(0, height/2 + 80, width, 20);         // Floor
+                ctx.fillRect(0, height/2 - 100, 20, 200);          // Left wall
+                ctx.fillRect(width - 20, height/2 - 100, 20, 200); // Right wall
                 
-                // Determine wall texture based on wall type
-                let wallTexture;
-                const wallType = MAP[result.mapY][result.mapX];
-                
-                // Default to stone texture if textures aren't loaded yet
-                if (!textures.walls.stone.complete) {
-                    // Fallback to colored walls
-                    let wallColor;
-                    if (result.side === 0) {
-                        wallColor = result.stepX > 0 ? "#AA0000" : "#880000"; // Red for X walls
-                    } else {
-                        wallColor = result.stepY > 0 ? "#770000" : "#550000"; // Darker red for Y walls
-                    }
-                    
-                    ctx.fillStyle = wallColor;
-                    ctx.fillRect(x * rayWidth, wallY, rayWidth + 1, wallHeight);
-                    continue;
-                }
-                
-                // Choose texture based on wall type
-                switch(wallType) {
-                    case 1: wallTexture = textures.walls.stone; break;
-                    case 2: wallTexture = textures.walls.tech; break;
-                    case 3: wallTexture = textures.walls.slime; break;
-                    case 4: wallTexture = textures.walls.blood; break;
-                    case 5: wallTexture = textures.walls.metal; break;
-                    default: wallTexture = textures.walls.stone;
-                }
-                
-                // Calculate texture coordinates
-                let textureX;
-                if (result.side === 0) {
-                    textureX = (gameState.player.y + wallDist * Math.sin(rayAngle)) % 1;
-                } else {
-                    textureX = (gameState.player.x + wallDist * Math.cos(rayAngle)) % 1;
-                }
-                
-                // Flip texture X if needed
-                if ((result.side === 0 && Math.cos(rayAngle) < 0) || 
-                    (result.side === 1 && Math.sin(rayAngle) < 0)) {
-                    textureX = 1 - textureX;
-                }
-                
-                // Scale texture X to pixel coordinates
-                textureX = Math.floor(textureX * wallTexture.width);
-                
-                // Draw textured wall slice
-                try {
-                    ctx.drawImage(
-                        wallTexture,
-                        textureX, 0,
-                        1, wallTexture.height,
-                        x * rayWidth, wallY,
-                        rayWidth + 1, wallHeight
-                    );
-                    
-                    // Add shading based on distance and side
-                    let shade = 1.0 - (wallDist / 15);
-                    shade *= (result.side === 1) ? 0.7 : 1.0;  // Darker for Y-side walls
-                    
-                    ctx.fillStyle = `rgba(0, 0, 0, ${1 - shade})`;
-                    ctx.fillRect(x * rayWidth, wallY, rayWidth + 1, wallHeight);
-                } catch (e) {
-                    // Fallback if texture drawing fails
-                    ctx.fillStyle = "#550000";
-                    ctx.fillRect(x * rayWidth, wallY, rayWidth + 1, wallHeight);
-                }
+                debug("Walls drawn successfully");
+                return true;
+            } catch (error) {
+                console.error("Error in drawWalls:", error);
+                console.error(error.stack);
+                return false;
             }
         }
 
@@ -900,100 +851,57 @@
         let use3DView = true;
 
         // Function to toggle between 3D and 2D views
-        function toggleView() {
-            console.log("Toggle view function called");
+        function toggleViewSimple() {
+            debug("Toggle view button clicked");
             use3DView = !use3DView;
-            console.log(`View toggled: ${use3DView ? '3D' : '2D'} view`);
             
-            // Update button text
             const toggleBtn = document.getElementById('toggleViewBtn');
             if (toggleBtn) {
                 toggleBtn.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
             }
             
-            // Force redraw
-            if (gameState) {
-                drawGame();
-            }
+            debug(`View set to ${use3DView ? '3D' : '2D'}`);
+            drawGame();
         }
-
-        // Function to set up the toggle view button
-        function setupToggleViewButton() {
-            console.log("Setting up toggle view button");
-            const toggleBtn = document.getElementById('toggleViewBtn');
-            
-            if (toggleBtn) {
-                // Remove any existing event listeners
-                const newToggleBtn = toggleBtn.cloneNode(true);
-                toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
-                
-                // Set initial button text
-                newToggleBtn.textContent = use3DView ? 'Switch to 2D' : 'Switch to 3D';
-                
-                // Add event listener
-                newToggleBtn.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    console.log("Toggle view button clicked");
-                    toggleView();
-                });
-            } else {
-                console.error("Toggle view button not found!");
-            }
-        }
-
-        // Call this function after the page loads
+        
+        // Setup the toggle view button with a simple approach
         document.addEventListener('DOMContentLoaded', function() {
-            setupToggleViewButton();
+            const toggleBtn = document.getElementById('toggleViewBtn');
+            if (toggleBtn) {
+                debug("Setting up toggle view button");
+                toggleBtn.addEventListener('click', toggleViewSimple);
+            }
         });
 
         // Update the drawGame function to properly handle the view mode
         function drawGame() {
             try {
-                console.log(`Drawing game in ${use3DView ? '3D' : '2D'} mode...`);
+                debug("Drawing game started");
                 
                 // Clear the canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 if (use3DView) {
-                    // 3D view
-                    console.log("Drawing 3D view");
+                    debug("Drawing 3D view");
                     
-                    // Draw walls
-                    drawWalls();
-                    
-                    // Draw fish
-                    if (gameState.fish && gameState.fish.length > 0) {
-                        drawFish();
+                    // Draw basic elements
+                    if (!drawWalls()) {
+                        throw new Error("Failed to draw walls");
                     }
                     
-                    // Draw bullets
-                    if (gameState.player && gameState.player.bullets && gameState.player.bullets.length > 0) {
-                        drawBullets();
-                    }
-                    
-                    // Draw explosions
-                    if (gameState.player && gameState.player.explosions && gameState.player.explosions.length > 0) {
-                        drawExplosions();
-                    }
-                    
-                    // Draw power-ups
-                    if (gameState.power_ups && gameState.power_ups.length > 0) {
-                        drawPowerUps();
-                    }
-                    
-                    // Draw pickups
-                    if (gameState.pickups && gameState.pickups.length > 0) {
-                        drawPickups();
-                    }
-                    
-                    // Draw weapon
-                    drawWeapon();
-                    
-                    // Draw crosshair
-                    drawCrosshair();
+                    // Draw a simple crosshair
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    const centerX = canvas.width / 2;
+                    const centerY = canvas.height / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 10, centerY);
+                    ctx.lineTo(centerX + 10, centerY);
+                    ctx.moveTo(centerX, centerY - 10);
+                    ctx.lineTo(centerX, centerY + 10);
+                    ctx.stroke();
                 } else {
-                    // 2D top-down view
-                    console.log("Drawing 2D view");
+                    debug("Drawing 2D view");
                     draw2DView();
                 }
                 
@@ -1004,15 +912,12 @@
                     document.getElementById('ammo').textContent = `Health: ${gameState.player.health}`;
                 }
                 
-                if (gameState.game_over) {
-                    document.getElementById('gameOver').style.display = 'block';
-                }
-                
+                debug("Drawing game completed successfully");
             } catch (error) {
                 console.error("Error drawing game:", error);
                 console.error(error.stack);
                 
-                // Fallback to a simple error message
+                // Draw a simple error message
                 ctx.fillStyle = '#ff0000';
                 ctx.font = '24px Arial';
                 ctx.textAlign = 'center';
@@ -1023,91 +928,57 @@
 
         // Add a 2D top-down view function
         function draw2DView() {
-            console.log("Drawing 2D view");
-            const width = canvas.width;
-            const height = canvas.height;
-            const cellSize = Math.min(width, height) / 20;
-            
-            // Draw background
-            ctx.fillStyle = '#111';
-            ctx.fillRect(0, 0, width, height);
-            
-            // Draw grid
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
-            
-            // Draw walls
-            for (let y = 0; y < MAP.length; y++) {
-                for (let x = 0; x < MAP[0].length; x++) {
-                    if (MAP[y][x] > 0) {
-                        // Wall cell
-                        ctx.fillStyle = '#8b0000';  // Dark red for walls
-                        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-                    } else {
-                        // Empty cell
+            try {
+                debug("Drawing 2D view");
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Draw background
+                ctx.fillStyle = '#111';
+                ctx.fillRect(0, 0, width, height);
+                
+                // Draw a simple grid
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                
+                const gridSize = 20;
+                const cellSize = Math.min(width, height) / gridSize;
+                
+                for (let x = 0; x < gridSize; x++) {
+                    for (let y = 0; y < gridSize; y++) {
                         ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
                     }
                 }
-            }
-            
-            // Draw player
-            if (gameState.player) {
-                ctx.fillStyle = '#ffff00';
-                ctx.beginPath();
-                ctx.arc(
-                    gameState.player.x * cellSize, 
-                    gameState.player.y * cellSize, 
-                    cellSize / 2, 
-                    0, 
-                    2 * Math.PI
-                );
-                ctx.fill();
                 
-                // Draw player direction
-                const dirX = Math.cos(gameState.player.angle) * cellSize;
-                const dirY = Math.sin(gameState.player.angle) * cellSize;
+                // Draw player as a yellow circle with direction
+                if (gameState.player) {
+                    const playerX = gameState.player.x * cellSize;
+                    const playerY = gameState.player.y * cellSize;
+                    
+                    // Draw player circle
+                    ctx.fillStyle = '#ffff00';
+                    ctx.beginPath();
+                    ctx.arc(playerX, playerY, cellSize/2, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // Draw direction line
+                    const dirX = Math.cos(gameState.player.angle) * cellSize;
+                    const dirY = Math.sin(gameState.player.angle) * cellSize;
+                    
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(playerX, playerY);
+                    ctx.lineTo(playerX + dirX, playerY + dirY);
+                    ctx.stroke();
+                }
                 
-                ctx.strokeStyle = '#ffff00';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(gameState.player.x * cellSize, gameState.player.y * cellSize);
-                ctx.lineTo(
-                    gameState.player.x * cellSize + dirX,
-                    gameState.player.y * cellSize + dirY
-                );
-                ctx.stroke();
-            }
-            
-            // Draw fish
-            if (gameState.fish) {
-                gameState.fish.forEach(fish => {
-                    ctx.fillStyle = '#ff0000';  // Red for fish
-                    ctx.beginPath();
-                    ctx.arc(
-                        fish.x * cellSize, 
-                        fish.y * cellSize, 
-                        cellSize / 3, 
-                        0, 
-                        2 * Math.PI
-                    );
-                    ctx.fill();
-                });
-            }
-            
-            // Draw bullets
-            if (gameState.player && gameState.player.bullets) {
-                ctx.fillStyle = '#00ff00';  // Green for bullets
-                gameState.player.bullets.forEach(bullet => {
-                    ctx.beginPath();
-                    ctx.arc(
-                        bullet.x * cellSize, 
-                        bullet.y * cellSize, 
-                        cellSize / 6, 
-                        0, 
-                        2 * Math.PI
-                    );
-                    ctx.fill();
-                });
+                debug("2D view drawn successfully");
+                return true;
+            } catch (error) {
+                console.error("Error in draw2DView:", error);
+                console.error(error.stack);
+                return false;
             }
         }
 
@@ -1744,6 +1615,41 @@
 
         // Call the initialization function
         initializeGame();
+
+        // Define MAP if it doesn't exist
+        if (typeof MAP === 'undefined') {
+            debug("Defining MAP variable");
+            window.MAP = [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            ];
+        }
+        
+        // Define player if it doesn't exist
+        if (typeof player === 'undefined') {
+            debug("Defining player variable");
+            window.player = {
+                fov: Math.PI / 3,  // 60 degrees field of view
+                depth: 16          // Maximum render distance
+            };
+        }
     </script>
 </body>
 </html>
