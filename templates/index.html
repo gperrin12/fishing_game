@@ -276,7 +276,6 @@
             [1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ];
         
@@ -407,22 +406,171 @@
                 const width = canvas.width;
                 const height = canvas.height;
                 
-                // Draw sky
-                ctx.fillStyle = "#4a0000";  // Dark red for Doom-like sky
+                // Draw sky (dark red for Doom's hellish sky)
+                const skyGradient = ctx.createLinearGradient(0, 0, 0, height/2);
+                skyGradient.addColorStop(0, "#350000");
+                skyGradient.addColorStop(1, "#5a0000");
+                ctx.fillStyle = skyGradient;
                 ctx.fillRect(0, 0, width, height/2);
                 
-                // Draw ground
-                ctx.fillStyle = "#201010";  // Dark brown
+                // Draw floor (dark brown)
+                const floorGradient = ctx.createLinearGradient(0, height/2, 0, height);
+                floorGradient.addColorStop(0, "#301810");
+                floorGradient.addColorStop(1, "#181010");
+                ctx.fillStyle = floorGradient;
                 ctx.fillRect(0, height/2, width, height/2);
                 
-                // Draw a simple wall pattern
-                ctx.fillStyle = "#8b0000";  // Wall color
+                // Only proceed with raycasting if textures are loaded
+                if (!texturesLoaded) {
+                    debug("Textures not loaded yet, drawing placeholder walls");
+                    return true;
+                }
                 
-                // Draw a corridor
-                ctx.fillRect(0, height/2 - 100, width, 20);        // Ceiling
-                ctx.fillRect(0, height/2 + 80, width, 20);         // Floor
-                ctx.fillRect(0, height/2 - 100, 20, 200);          // Left wall
-                ctx.fillRect(width - 20, height/2 - 100, 20, 200); // Right wall
+                // Get player position and angle
+                const playerX = gameState.player.x;
+                const playerY = gameState.player.y;
+                const playerAngle = gameState.player.angle;
+                
+                // Ray casting loop
+                for (let x = 0; x < width; x++) {
+                    // Calculate ray position and direction
+                    const cameraX = 2 * x / width - 1; // x-coordinate in camera space
+                    const rayDirX = Math.cos(playerAngle) + Math.sin(playerAngle) * cameraX;
+                    const rayDirY = Math.sin(playerAngle) - Math.cos(playerAngle) * cameraX;
+                    
+                    // Which box of the map we're in
+                    let mapX = Math.floor(playerX);
+                    let mapY = Math.floor(playerY);
+                    
+                    // Length of ray from current position to next x or y-side
+                    let sideDistX, sideDistY;
+                    
+                    // Length of ray from one x or y-side to next x or y-side
+                    const deltaDistX = Math.abs(1 / rayDirX);
+                    const deltaDistY = Math.abs(1 / rayDirY);
+                    
+                    // Direction to step in x or y direction (either +1 or -1)
+                    let stepX, stepY;
+                    
+                    // Calculate step and initial sideDist
+                    if (rayDirX < 0) {
+                        stepX = -1;
+                        sideDistX = (playerX - mapX) * deltaDistX;
+                    } else {
+                        stepX = 1;
+                        sideDistX = (mapX + 1.0 - playerX) * deltaDistX;
+                    }
+                    
+                    if (rayDirY < 0) {
+                        stepY = -1;
+                        sideDistY = (playerY - mapY) * deltaDistY;
+                    } else {
+                        stepY = 1;
+                        sideDistY = (mapY + 1.0 - playerY) * deltaDistY;
+                    }
+                    
+                    // Perform DDA (Digital Differential Analysis)
+                    let hit = 0; // Was there a wall hit?
+                    let side = 0; // Was a NS or a EW wall hit?
+                    
+                    while (hit === 0) {
+                        // Jump to next map square, either in x-direction, or in y-direction
+                        if (sideDistX < sideDistY) {
+                            sideDistX += deltaDistX;
+                            mapX += stepX;
+                            side = 0;
+                        } else {
+                            sideDistY += deltaDistY;
+                            mapY += stepY;
+                            side = 1;
+                        }
+                        
+                        // Check if ray has hit a wall
+                        if (mapX < 0 || mapY < 0 || mapX >= MAP[0].length || mapY >= MAP.length) {
+                            hit = 1; // Out of bounds
+                        } else if (MAP[mapY][mapX] > 0) {
+                            hit = MAP[mapY][mapX]; // Wall type
+                        }
+                    }
+                    
+                    // Calculate distance projected on camera direction
+                    let perpWallDist;
+                    if (side === 0) {
+                        perpWallDist = (mapX - playerX + (1 - stepX) / 2) / rayDirX;
+                    } else {
+                        perpWallDist = (mapY - playerY + (1 - stepY) / 2) / rayDirY;
+                    }
+                    
+                    // Calculate height of line to draw on screen
+                    const lineHeight = Math.floor(height / perpWallDist);
+                    
+                    // Calculate lowest and highest pixel to fill in current stripe
+                    let drawStart = Math.max(0, Math.floor(-lineHeight / 2 + height / 2));
+                    let drawEnd = Math.min(height - 1, Math.floor(lineHeight / 2 + height / 2));
+                    
+                    // Select texture based on wall type
+                    const wallType = hit;
+                    let wallTexture;
+                    
+                    switch (wallType) {
+                        case 2: // Tech wall
+                            wallTexture = textures.walls.tech;
+                            break;
+                        case 3: // Slime wall
+                            wallTexture = textures.walls.slime;
+                            break;
+                        case 4: // Blood wall
+                            wallTexture = textures.walls.blood;
+                            break;
+                        case 5: // Metal wall
+                            wallTexture = textures.walls.metal;
+                            break;
+                        default: // Default red brick
+                            wallTexture = textures.walls.default;
+                    }
+                    
+                    // Calculate where exactly the wall was hit
+                    let wallX;
+                    if (side === 0) {
+                        wallX = playerY + perpWallDist * rayDirY;
+                    } else {
+                        wallX = playerX + perpWallDist * rayDirX;
+                    }
+                    wallX -= Math.floor(wallX);
+                    
+                    // X coordinate on the texture
+                    let texX = Math.floor(wallX * wallTexture.width);
+                    if (side === 0 && rayDirX > 0) texX = wallTexture.width - texX - 1;
+                    if (side === 1 && rayDirY < 0) texX = wallTexture.width - texX - 1;
+                    
+                    // How much to increase the texture coordinate per screen pixel
+                    const step = wallTexture.height / lineHeight;
+                    // Starting texture coordinate
+                    let texPos = (drawStart - height / 2 + lineHeight / 2) * step;
+                    
+                    // Draw the textured wall slice
+                    for (let y = drawStart; y < drawEnd; y++) {
+                        // Cast the texture coordinate to integer, and mask with (texHeight - 1)
+                        const texY = Math.floor(texPos) & (wallTexture.height - 1);
+                        texPos += step;
+                        
+                        // Draw pixel from texture
+                        try {
+                            // Apply shading based on distance and side
+                            let shade = 1.0;
+                            if (side === 1) shade = 0.7; // Darker for y-side walls
+                            
+                            // Apply distance shading (fog effect)
+                            shade *= Math.min(1.0, 5.0 / perpWallDist);
+                            
+                            // Draw a single pixel
+                            ctx.fillStyle = `rgba(${shade * 255}, ${shade * 255}, ${shade * 255}, 1.0)`;
+                            ctx.fillRect(x, y, 1, 1);
+                        } catch (e) {
+                            console.error("Error drawing textured wall:", e);
+                        }
+                    }
+                }
                 
                 debug("Walls drawn successfully");
                 return true;
@@ -434,174 +582,150 @@
         }
 
         function drawFish() {
-            if (!gameState.fish || gameState.fish.length === 0) return;
-            
-            const width = canvas.width;
-            const height = canvas.height;
-            
-            // Sort fish by distance (furthest first for proper rendering)
-            gameState.fish.sort((a, b) => {
-                const distA = Math.pow(a.x - gameState.player.x, 2) + Math.pow(a.y - gameState.player.y, 2);
-                const distB = Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2);
-                return distB - distA;
-            });
-            
-            // Draw each fish as a Doom-like sprite
-            gameState.fish.forEach(fish => {
-                // Calculate fish position relative to player
-                const dx = fish.x - gameState.player.x;
-                const dy = fish.y - gameState.player.y;
+            try {
+                debug("Drawing fish as Doom monsters");
+                if (!gameState.fish || gameState.fish.length === 0) return true;
                 
-                // Calculate angle to fish
-                let fishAngle = Math.atan2(dy, dx);
+                const width = canvas.width;
+                const height = canvas.height;
                 
-                // Normalize angles
-                while (fishAngle - gameState.player.angle > Math.PI) fishAngle -= 2 * Math.PI;
-                while (fishAngle - gameState.player.angle < -Math.PI) fishAngle += 2 * Math.PI;
+                // Sort sprites by distance (furthest first for proper rendering)
+                const sprites = gameState.fish.slice().sort((a, b) => {
+                    const distA = Math.pow(a.x - gameState.player.x, 2) + Math.pow(a.y - gameState.player.y, 2);
+                    const distB = Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2);
+                    return distB - distA;
+                });
                 
-                // Calculate fish distance
-                const fishDist = Math.sqrt(dx * dx + dy * dy);
-                
-                // Play sound occasionally for nearby enemies
-                if (fishDist < 10 && Math.random() < 0.01) {
-                    const splashSound = document.getElementById('splashSound');
-                    splashSound.volume = Math.min(1.0, 8 / fishDist) * 0.4;
-                    splashSound.currentTime = 0;
-                    splashSound.play().catch(e => console.log("Audio play failed:", e));
-                }
-                
-                // Check if fish is in field of view
-                if (Math.abs(fishAngle - gameState.player.angle) < player.fov / 2) {
-                    // Calculate fish size based on distance
-                    const fishSize = Math.min(height / 1.5, 10000 / fishDist);
+                sprites.forEach(fish => {
+                    // Calculate sprite position relative to player
+                    const spriteX = fish.x - gameState.player.x;
+                    const spriteY = fish.y - gameState.player.y;
                     
-                    // Calculate screen position
-                    const angleToCenter = fishAngle - gameState.player.angle;
-                    const screenX = (angleToCenter / (player.fov / 2)) * (width / 2) + width / 2;
+                    // Transform sprite with the inverse camera matrix
+                    const invDet = 1.0 / (Math.cos(gameState.player.angle) * Math.sin(gameState.player.angle + Math.PI/2) - 
+                                          Math.sin(gameState.player.angle) * Math.cos(gameState.player.angle + Math.PI/2));
                     
-                    // Calculate vertical position based on distance
-                    const screenY = height / 2;
+                    const transformX = invDet * (Math.sin(gameState.player.angle + Math.PI/2) * spriteX - 
+                                                 Math.cos(gameState.player.angle + Math.PI/2) * spriteY);
                     
-                    // Get the appropriate sprite
-                    const fishSprite = textures.sprites[fish.type];
+                    const transformY = invDet * (-Math.sin(gameState.player.angle) * spriteX + 
+                                                 Math.cos(gameState.player.angle) * spriteY);
                     
-                    // Check if sprite is loaded
-                    if (fishSprite && fishSprite.complete) {
-                        // Draw sprite with scaling based on distance
-                        const spriteWidth = fishSize;
-                        const spriteHeight = fishSize * (fishSprite.height / fishSprite.width);
-                        
-                        ctx.save();
-                        
-                        // Add a shadow
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                        ctx.beginPath();
-                        ctx.ellipse(screenX, height / 2 + fishSize/2, fishSize / 3, fishSize / 6, 0, 0, 2 * Math.PI);
-                        ctx.fill();
-                        
-                        // Draw the sprite
-                        ctx.drawImage(
-                            fishSprite,
-                            screenX - spriteWidth / 2,
-                            screenY - spriteHeight / 2,
-                            spriteWidth,
-                            spriteHeight
-                        );
-                        
-                        // Add health bar
-                        const healthPercent = fish.health / FISH_TYPES[fish.type].health;
-                        const barWidth = fishSize * 0.8;
-                        const barHeight = fishSize / 15;
-                        
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                        ctx.fillRect(screenX - barWidth/2, screenY - spriteHeight/2 - barHeight*2, barWidth, barHeight);
-                        
-                        ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00';
-                        ctx.fillRect(screenX - barWidth/2, screenY - spriteHeight/2 - barHeight*2, barWidth * healthPercent, barHeight);
-                        
-                        ctx.restore();
-                    } else {
-                        // Fallback to colored circles if sprites aren't loaded
-                        ctx.save();
-                        
-                        // Add glow effect for better visibility
-                        ctx.shadowColor = FISH_TYPES[fish.type].color;
-                        ctx.shadowBlur = 20;
-                        ctx.fillStyle = FISH_TYPES[fish.type].color;
-                        
-                        // Draw fish body
-                        ctx.beginPath();
-                        ctx.arc(screenX, screenY, fishSize / 3, 0, 2 * Math.PI);
-                        ctx.fill();
-                        
-                        // Add health bar
-                        const healthPercent = fish.health / FISH_TYPES[fish.type].health;
-                        const barWidth = fishSize * 0.8;
-                        const barHeight = fishSize / 15;
-                        
-                        ctx.shadowBlur = 0;
-                        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-                        ctx.fillRect(screenX - barWidth/2, screenY - fishSize/2 - barHeight*2, barWidth, barHeight);
-                        
-                        ctx.fillStyle = healthPercent > 0.5 ? '#0f0' : healthPercent > 0.25 ? '#ff0' : '#f00';
-                        ctx.fillRect(screenX - barWidth/2, screenY - fishSize/2 - barHeight*2, barWidth * healthPercent, barHeight);
-                        
-                        ctx.restore();
+                    // Skip if behind player
+                    if (transformY <= 0) return;
+                    
+                    // Calculate sprite screen position
+                    const spriteScreenX = Math.floor((width / 2) * (1 + transformX / transformY));
+                    
+                    // Calculate sprite size
+                    const spriteSize = Math.min(height, Math.floor(height / transformY * 0.75));
+                    
+                    // Draw the sprite
+                    const halfSize = spriteSize / 2;
+                    const drawStartX = Math.max(0, spriteScreenX - halfSize);
+                    const drawEndX = Math.min(width - 1, spriteScreenX + halfSize);
+                    const drawStartY = Math.max(0, height / 2 - halfSize);
+                    const drawEndY = Math.min(height - 1, height / 2 + halfSize);
+                    
+                    // Select sprite texture based on fish type
+                    let spriteTexture;
+                    switch (fish.type) {
+                        case 'imp':
+                            spriteTexture = textures.sprites.imp;
+                            break;
+                        case 'demon':
+                            spriteTexture = textures.sprites.demon;
+                            break;
+                        case 'cacodemon':
+                            spriteTexture = textures.sprites.cacodemon;
+                            break;
+                        case 'baron':
+                            spriteTexture = textures.sprites.baron;
+                            break;
+                        default:
+                            spriteTexture = textures.sprites.imp; // Default to imp
                     }
-                }
-            });
+                    
+                    // Calculate scaling factors
+                    const heightScale = spriteSize / spriteTexture.height;
+                    const widthScale = spriteSize / spriteTexture.width;
+                    
+                    // Draw the sprite
+                    ctx.save();
+                    ctx.translate(spriteScreenX, height / 2);
+                    ctx.scale(widthScale, heightScale);
+                    ctx.drawImage(spriteTexture, -spriteTexture.width/2, -spriteTexture.height/2);
+                    
+                    // Add health bar above enemy
+                    const healthPercent = fish.health / FISH_TYPES[fish.type].health;
+                    const barWidth = spriteTexture.width * 0.8;
+                    const barHeight = 5;
+                    ctx.fillStyle = '#333333';
+                    ctx.fillRect(-barWidth/2, -spriteTexture.height/2 - 10, barWidth, barHeight);
+                    ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+                    ctx.fillRect(-barWidth/2, -spriteTexture.height/2 - 10, barWidth * healthPercent, barHeight);
+                    
+                    ctx.restore();
+                });
+                
+                debug("Fish drawn successfully");
+                return true;
+            } catch (error) {
+                console.error("Error in drawFish:", error);
+                console.error(error.stack);
+                return false;
+            }
         }
 
         function drawWeapon() {
-            if (!gameState.player) return;
-            
-            const width = canvas.width;
-            const height = canvas.height;
-            
-            // Get current weapon
-            const weaponName = gameState.player.current_weapon || 'pistol';
-            const weaponSprite = textures.sprites[weaponName];
-            
-            // Calculate weapon bob based on movement
-            const bobAmount = Math.sin(Date.now() / 200) * 5;
-            
-            // Draw weapon sprite
-            if (weaponSprite && weaponSprite.complete) {
-                const weaponWidth = width / 2;
-                const weaponHeight = weaponWidth * (weaponSprite.height / weaponSprite.width);
+            try {
+                debug("Drawing weapon");
+                if (!gameState.player || !gameState.player.current_weapon) return true;
                 
-                // Draw weapon with bob effect
-                ctx.drawImage(
-                    weaponSprite,
-                    width / 2 - weaponWidth / 2,
-                    height - weaponHeight + bobAmount,
-                    weaponWidth,
-                    weaponHeight
-                );
-            } else {
-                // Fallback if sprite isn't loaded
-                ctx.fillStyle = '#555555';
-                ctx.fillRect(width / 2 - 50, height - 100 + bobAmount, 100, 100);
-            }
-            
-            // Draw weapon cooldown indicator
-            if (gameState.player.weapon_cooldown > 0) {
-                const cooldownWidth = 100;
-                const cooldownHeight = 10;
-                const cooldownX = width - cooldownWidth - 20;
-                const cooldownY = height - 40;
+                const width = canvas.width;
+                const height = canvas.height;
                 
-                // Background
-                ctx.fillStyle = '#333333';
-                ctx.fillRect(cooldownX, cooldownY, cooldownWidth, cooldownHeight);
+                // Select weapon sprite based on current weapon
+                let weaponSprite;
+                switch (gameState.player.current_weapon) {
+                    case 'pistol':
+                        weaponSprite = textures.sprites.pistol;
+                        break;
+                    case 'shotgun':
+                        weaponSprite = textures.sprites.shotgun;
+                        break;
+                    case 'chaingun':
+                        weaponSprite = textures.sprites.chaingun;
+                        break;
+                    case 'plasma':
+                        weaponSprite = textures.sprites.plasma;
+                        break;
+                    case 'bfg':
+                        weaponSprite = textures.sprites.bfg;
+                        break;
+                    default:
+                        weaponSprite = textures.sprites.pistol; // Default to pistol
+                }
                 
-                // Get weapon cooldown from WEAPONS object
-                const weaponCooldown = WEAPONS[weaponName] ? WEAPONS[weaponName].cooldown : 20;
+                // Calculate weapon position (bouncing effect while moving)
+                const bounceY = Math.sin(Date.now() / 150) * 10 * (isMoving ? 1 : 0.2);
+                const weaponX = width / 2;
+                const weaponY = height - weaponSprite.height / 3 + bounceY;
                 
-                // Cooldown progress
-                const cooldownPercent = gameState.player.weapon_cooldown / weaponCooldown;
-                ctx.fillStyle = '#ff0000';
-                ctx.fillRect(cooldownX, cooldownY, cooldownWidth * (1 - cooldownPercent), cooldownHeight);
+                // Draw weapon
+                const scale = 0.8; // Scale the weapon sprite
+                ctx.save();
+                ctx.translate(weaponX, weaponY);
+                ctx.scale(scale, scale);
+                ctx.drawImage(weaponSprite, -weaponSprite.width/2, -weaponSprite.height/2);
+                ctx.restore();
+                
+                debug("Weapon drawn successfully");
+                return true;
+            } catch (error) {
+                console.error("Error in drawWeapon:", error);
+                console.error(error.stack);
+                return false;
             }
         }
 
@@ -876,7 +1000,7 @@
         // Update the drawGame function to properly handle the view mode
         function drawGame() {
             try {
-                debug("Drawing game started");
+                debug(`Drawing game in ${use3DView ? '3D' : '2D'} mode...`);
                 
                 // Clear the canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -889,7 +1013,38 @@
                         throw new Error("Failed to draw walls");
                     }
                     
-                    // Draw a simple crosshair
+                    // Draw fish (enemies)
+                    if (gameState.fish && gameState.fish.length > 0) {
+                        if (!drawFish()) {
+                            throw new Error("Failed to draw fish");
+                        }
+                    }
+                    
+                    // Draw bullets
+                    if (gameState.player && gameState.player.bullets && gameState.player.bullets.length > 0) {
+                        if (!drawBullets()) {
+                            throw new Error("Failed to draw bullets");
+                        }
+                    }
+                    
+                    // Draw pickups
+                    if (gameState.pickups && gameState.pickups.length > 0) {
+                        if (!drawPickups()) {
+                            throw new Error("Failed to draw pickups");
+                        }
+                    }
+                    
+                    // Draw weapon
+                    if (!drawWeapon()) {
+                        throw new Error("Failed to draw weapon");
+                    }
+                    
+                    // Draw Doom-style HUD
+                    if (!drawDoomHUD()) {
+                        throw new Error("Failed to draw HUD");
+                    }
+                    
+                    // Draw crosshair
                     ctx.strokeStyle = '#ffffff';
                     ctx.lineWidth = 2;
                     const centerX = canvas.width / 2;
@@ -910,6 +1065,10 @@
                 
                 if (gameState.player && gameState.player.health !== undefined) {
                     document.getElementById('ammo').textContent = `Health: ${gameState.player.health}`;
+                }
+                
+                if (gameState.game_over) {
+                    document.getElementById('gameOver').style.display = 'block';
                 }
                 
                 debug("Drawing game completed successfully");
@@ -1105,6 +1264,10 @@
             drawGame();
         }
 
+        // Track player movement for weapon bounce
+        let isMoving = false;
+        
+        // Update the setupControls function to track movement
         function setupControls() {
             // Touch controls
             document.getElementById('leftBtn').addEventListener('touchstart', (e) => {
@@ -1164,6 +1327,30 @@
                 if (e.buttons === 1) { // Left mouse button held down
                     const movementX = e.movementX || 0;
                     move('LOOK', movementX / 100);
+                }
+            });
+            
+            // Track movement for weapon bounce
+            document.getElementById('forwardBtn').addEventListener('mousedown', () => isMoving = true);
+            document.getElementById('backwardBtn').addEventListener('mousedown', () => isMoving = true);
+            document.getElementById('leftBtn').addEventListener('mousedown', () => isMoving = true);
+            document.getElementById('rightBtn').addEventListener('mousedown', () => isMoving = true);
+            
+            document.getElementById('forwardBtn').addEventListener('mouseup', () => isMoving = false);
+            document.getElementById('backwardBtn').addEventListener('mouseup', () => isMoving = false);
+            document.getElementById('leftBtn').addEventListener('mouseup', () => isMoving = false);
+            document.getElementById('rightBtn').addEventListener('mouseup', () => isMoving = false);
+            
+            // Track keyboard movement
+            document.addEventListener('keydown', function(event) {
+                if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                    isMoving = true;
+                }
+            });
+            
+            document.addEventListener('keyup', function(event) {
+                if (['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                    isMoving = false;
                 }
             });
         }
@@ -1649,6 +1836,140 @@
                 fov: Math.PI / 3,  // 60 degrees field of view
                 depth: 16          // Maximum render distance
             };
+        }
+
+        // Load textures for Doom-style rendering
+        const textures = {
+            walls: {
+                default: new Image(),
+                tech: new Image(),
+                slime: new Image(),
+                blood: new Image(),
+                metal: new Image()
+            },
+            sprites: {
+                imp: new Image(),
+                demon: new Image(),
+                cacodemon: new Image(),
+                baron: new Image(),
+                pistol: new Image(),
+                shotgun: new Image(),
+                chaingun: new Image(),
+                plasma: new Image(),
+                bfg: new Image()
+            },
+            items: {
+                health: new Image(),
+                armor: new Image(),
+                ammo: new Image(),
+                weapon: new Image()
+            },
+            hud: {
+                face: new Image(),
+                numbers: new Image()
+            }
+        };
+
+        // Set texture sources
+        textures.walls.default.src = 'https://i.imgur.com/Yj4uLI2.png'; // Red brick wall
+        textures.walls.tech.src = 'https://i.imgur.com/2wRjdML.png';    // Tech wall
+        textures.walls.slime.src = 'https://i.imgur.com/kPHW2HK.png';   // Green slime wall
+        textures.walls.blood.src = 'https://i.imgur.com/BGrwZL4.png';   // Blood wall
+        textures.walls.metal.src = 'https://i.imgur.com/cBGRCh5.png';   // Metal wall
+        
+        // Enemy sprites
+        textures.sprites.imp.src = 'https://i.imgur.com/OFrCLbL.png';
+        textures.sprites.demon.src = 'https://i.imgur.com/jLxBSP0.png';
+        textures.sprites.cacodemon.src = 'https://i.imgur.com/lDRbBdW.png';
+        textures.sprites.baron.src = 'https://i.imgur.com/MF6Ym7S.png';
+        
+        // Weapon sprites
+        textures.sprites.pistol.src = 'https://i.imgur.com/r9PXvoL.png';
+        textures.sprites.shotgun.src = 'https://i.imgur.com/V3yY9VU.png';
+        textures.sprites.chaingun.src = 'https://i.imgur.com/JQ2Ccpf.png';
+        textures.sprites.plasma.src = 'https://i.imgur.com/RmkfVoM.png';
+        textures.sprites.bfg.src = 'https://i.imgur.com/9Bn6sHD.png';
+        
+        // Item sprites
+        textures.items.health.src = 'https://i.imgur.com/E8F8nzr.png';
+        textures.items.armor.src = 'https://i.imgur.com/LRpuPbm.png';
+        textures.items.ammo.src = 'https://i.imgur.com/xkXsnE2.png';
+        textures.items.weapon.src = 'https://i.imgur.com/V4dLpRK.png';
+        
+        // HUD elements
+        textures.hud.face.src = 'https://i.imgur.com/XM0Tupf.png';
+        textures.hud.numbers.src = 'https://i.imgur.com/P2uKVKS.png';
+        
+        let texturesLoaded = false;
+        let texturesLoadingPromises = [];
+        
+        // Create a promise for each texture
+        for (let category in textures) {
+            for (let key in textures[category]) {
+                const img = textures[category][key];
+                const promise = new Promise((resolve) => {
+                    img.onload = resolve;
+                });
+                texturesLoadingPromises.push(promise);
+            }
+        }
+        
+        // When all textures are loaded
+        Promise.all(texturesLoadingPromises).then(() => {
+            texturesLoaded = true;
+            console.log("All textures loaded successfully");
+            
+            // Redraw the game with textures
+            drawGame();
+        });
+
+        // Add a function to draw a Doom-style HUD
+        function drawDoomHUD() {
+            try {
+                debug("Drawing Doom-style HUD");
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Draw HUD background
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, height - 40, width, 40);
+                
+                // Draw health
+                ctx.font = '16px "Press Start 2P", cursive';
+                ctx.fillStyle = '#ff0000';
+                ctx.textAlign = 'left';
+                ctx.fillText("HEALTH", 10, height - 15);
+                
+                // Draw health numbers
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(gameState.player.health, 100, height - 15);
+                
+                // Draw ammo for current weapon
+                ctx.fillStyle = '#ffff00';
+                ctx.textAlign = 'right';
+                
+                const currentWeapon = gameState.player.current_weapon || 'pistol';
+                const ammoType = WEAPONS[currentWeapon].ammo_type;
+                const ammoCount = gameState.player.ammo[ammoType];
+                
+                ctx.fillText("AMMO", width - 80, height - 15);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(ammoCount, width - 10, height - 15);
+                
+                // Draw armor if player has any
+                if (gameState.player.armor > 0) {
+                    ctx.fillStyle = '#00aaff';
+                    ctx.textAlign = 'center';
+                    ctx.fillText("ARMOR: " + gameState.player.armor, width / 2, height - 15);
+                }
+                
+                debug("HUD drawn successfully");
+                return true;
+            } catch (error) {
+                console.error("Error in drawDoomHUD:", error);
+                console.error(error.stack);
+                return false;
+            }
         }
     </script>
 </body>
