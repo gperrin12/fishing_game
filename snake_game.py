@@ -39,11 +39,11 @@ MAP = [
 
 # Define wall textures for different wall types
 WALL_TEXTURES = {
-    1: "stone",      # Regular stone walls
-    2: "tech",       # Tech walls (like computer panels)
-    3: "slime",      # Slime-covered walls
-    4: "blood",      # Blood-stained walls
-    5: "metal"       # Metal walls
+    1: "wood",      # Regular wooden dock walls
+    2: "rocks",     # Rocky shore walls
+    3: "reeds",     # Reed-covered shore
+    4: "mud",       # Muddy shore
+    5: "sand"       # Sandy shore
 }
 
 # Game state
@@ -61,14 +61,14 @@ game_state = {
         'power_ups_used': [],
         'health': 100,
         'armor': 0,
-        'current_weapon': 'pistol',
-        'weapons': ['pistol'],
-        'ammo': {
-            'bullets': 50,
-            'shells': 0,
-            'cells': 0
+        'current_rod': 'basic',
+        'rods': ['basic'],
+        'tackle_box': {
+            'flies': 50,
+            'spinners': 0,
+            'crankbaits': 0
         },
-        'weapon_cooldown': 0
+        'rod_cooldown': 0
     },
     'fish': [],  # [{'x': x, 'y': y, 'type': 'bass', 'speed': speed, 'health': health}]
     'boss': None,  # {'x': x, 'y': y, 'health': health, 'pattern': pattern}
@@ -84,46 +84,50 @@ GRID_HEIGHT = 40
 LURE_TYPES = {
     'fly': {'damage': 1, 'speed': 2, 'cooldown': 0.3},
     'spinner': {'damage': 2, 'speed': 1.5, 'cooldown': 0.5},
-    'popper': {'damage': 3, 'speed': 1, 'cooldown': 0.8},
-    'frog': {'damage': 4, 'speed': 0.8, 'cooldown': 1}
+    'crankbait': {'damage': 3, 'speed': 1, 'cooldown': 0.8},
+    'popper': {'damage': 4, 'speed': 0.8, 'cooldown': 1}
 }
 
 FISH_TYPES = {
-    'imp': {
-        'color': '#ff4500',
+    'bluegill': {
+        'color': '#4169E1',
         'speed': 0.04,
         'health': 3,
         'damage': 2,
         'points': 100,
         'attack_type': 'melee',
-        'sprite': 'imp'
+        'sprite': 'bluegill',
+        'chance': 0.4
     },
-    'demon': {
-        'color': '#8b0000',
+    'bass': {
+        'color': '#006400',
         'speed': 0.03,
         'health': 5,
         'damage': 3,
         'points': 200,
         'attack_type': 'charge',
-        'sprite': 'demon'
+        'sprite': 'bass',
+        'chance': 0.3
     },
-    'cacodemon': {
-        'color': '#ff1493',
+    'pike': {
+        'color': '#8B4513',
         'speed': 0.02,
         'health': 8,
         'damage': 4,
         'points': 300,
         'attack_type': 'projectile',
-        'sprite': 'cacodemon'
+        'sprite': 'pike',
+        'chance': 0.2
     },
-    'baron': {
-        'color': '#006400',
+    'muskie': {
+        'color': '#DC143C',
         'speed': 0.015,
         'health': 15,
         'damage': 6,
         'points': 500,
         'attack_type': 'projectile',
-        'sprite': 'baron'
+        'sprite': 'muskie',
+        'chance': 0.1
     }
 }
 
@@ -134,61 +138,61 @@ POWER_UPS = {
 }
 
 BOSS_PATTERNS = {
-    'largemouth': {
+    'giant_catfish': {
         'health': 50,
         'points': 500,
         'attack_patterns': ['zigzag', 'charge', 'spawn_minions']
     },
-    'sturgeon': {
+    'alligator_gar': {
         'health': 75,
         'points': 750,
         'attack_patterns': ['sweep', 'dive', 'shield']
     }
 }
 
-# Define weapons similar to Doom
-WEAPONS = {
-    'pistol': {
+# Define fishing rods similar to Doom weapons
+RODS = {
+    'basic': {
         'damage': 1,
         'speed': 0.3,
         'cooldown': 20,
-        'sprite': 'pistol',
-        'sound': 'pistol',
-        'ammo_type': 'bullets'
+        'sprite': 'basic_rod',
+        'sound': 'cast',
+        'ammo_type': 'flies'
     },
-    'shotgun': {
+    'spinning': {
         'damage': 2,
         'speed': 0.25,
         'cooldown': 30,
         'spread': 3,
-        'pellets': 7,
-        'sprite': 'shotgun',
-        'sound': 'shotgun',
-        'ammo_type': 'shells'
+        'casts': 3,
+        'sprite': 'spinning_rod',
+        'sound': 'spinning_cast',
+        'ammo_type': 'spinners'
     },
-    'chaingun': {
+    'baitcaster': {
         'damage': 1,
         'speed': 0.3,
         'cooldown': 5,
-        'sprite': 'chaingun',
-        'sound': 'chaingun',
-        'ammo_type': 'bullets'
+        'sprite': 'baitcaster',
+        'sound': 'baitcaster_cast',
+        'ammo_type': 'flies'
     },
-    'plasma': {
+    'trolling': {
         'damage': 2,
         'speed': 0.4,
         'cooldown': 10,
-        'sprite': 'plasma',
-        'sound': 'plasma',
-        'ammo_type': 'cells'
+        'sprite': 'trolling_rod',
+        'sound': 'trolling_cast',
+        'ammo_type': 'crankbaits'
     },
-    'bfg': {
+    'pro_rod': {
         'damage': 10,
         'speed': 0.2,
         'cooldown': 60,
-        'sprite': 'bfg',
-        'sound': 'bfg',
-        'ammo_type': 'cells',
+        'sprite': 'pro_rod',
+        'sound': 'pro_cast',
+        'ammo_type': 'crankbaits',
         'explosion_radius': 3
     }
 }
@@ -217,14 +221,14 @@ def reset_game():
     game_state['player']['power_ups_used'] = []
     game_state['player']['health'] = 100
     game_state['player']['armor'] = 0
-    game_state['player']['current_weapon'] = 'pistol'
-    game_state['player']['weapons'] = ['pistol']
-    game_state['player']['ammo'] = {
-        'bullets': 50,
-        'shells': 0,
-        'cells': 0
+    game_state['player']['current_rod'] = 'basic'
+    game_state['player']['rods'] = ['basic']
+    game_state['player']['tackle_box'] = {
+        'flies': 50,
+        'spinners': 0,
+        'crankbaits': 0
     }
-    game_state['player']['weapon_cooldown'] = 0
+    game_state['player']['rod_cooldown'] = 0
     game_state['fish'] = []
     game_state['boss'] = None
     game_state['score'] = 0
@@ -289,15 +293,15 @@ class Game:
             'angle': 0.0,
             'health': 100,
             'armor': 0,
-            'current_weapon': 'pistol',
-            'weapons': ['pistol'],
-            'ammo': {
-                'bullets': 50,
-                'shells': 0,
-                'cells': 0
+            'current_rod': 'basic',
+            'rods': ['basic'],
+            'tackle_box': {
+                'flies': 50,
+                'spinners': 0,
+                'crankbaits': 0
             },
-            'weapon_cooldown': 0,
-            'bullets': [],
+            'rod_cooldown': 0,
+            'casts': [],
             'explosions': [],
             'power_ups': [],
             'lures': 10,  # Assuming 10 is the starting count of lures
@@ -316,11 +320,11 @@ class Game:
         # Spawn initial power-ups
         self.spawn_power_ups(3)
         
-        # Spawn initial weapon pickup
-        self.spawn_weapon_pickup()
+        # Spawn initial rod pickup
+        self.spawn_rod_pickup()
         
-        # Spawn initial ammo pickup
-        self.spawn_ammo_pickup()
+        # Spawn initial tackle pickup
+        self.spawn_tackle_pickup()
         
         print("Game reset complete")
     
@@ -404,46 +408,46 @@ class Game:
         return True
     
     def shoot(self):
-        # Check if weapon is on cooldown
-        if 'weapon_cooldown' in self.player and self.player['weapon_cooldown'] > 0:
+        # Check if rod is on cooldown
+        if 'rod_cooldown' in self.player and self.player['rod_cooldown'] > 0:
             return False
         
-        # Get current weapon
-        weapon_name = self.player.get('current_weapon', 'pistol')
+        # Get current rod
+        rod_name = self.player.get('current_rod', 'basic')
         
-        # Check if we have the WEAPONS dictionary
-        if 'WEAPONS' in globals() and weapon_name in WEAPONS:
-            weapon = WEAPONS[weapon_name]
-            ammo_type = weapon['ammo_type']
+        # Check if we have the RODS dictionary
+        if 'RODS' in globals() and rod_name in RODS:
+            rod = RODS[rod_name]
+            ammo_type = rod['ammo_type']
             
-            # Check if player has ammo - make sure ammo is a dictionary with numeric values
-            if isinstance(self.player['ammo'], dict) and ammo_type in self.player['ammo']:
-                ammo_count = self.player['ammo'][ammo_type]
+            # Check if player has tackle - make sure tackle_box is a dictionary with numeric values
+            if isinstance(self.player['tackle_box'], dict) and ammo_type in self.player['tackle_box']:
+                ammo_count = self.player['tackle_box'][ammo_type]
                 if isinstance(ammo_count, int) and ammo_count <= 0:
                     print(f"Out of {ammo_type}")
                     return False
                 
-                # Consume ammo
-                self.player['ammo'][ammo_type] -= 1
+                # Consume tackle
+                self.player['tackle_box'][ammo_type] -= 1
             else:
-                print("Invalid ammo structure")
+                print("Invalid tackle box structure")
                 return False
             
-            # Set weapon cooldown
-            self.player['weapon_cooldown'] = weapon['cooldown']
+            # Set rod cooldown
+            self.player['rod_cooldown'] = rod['cooldown']
             
-            # Handle different weapon types
-            if 'pellets' in weapon:  # Shotgun-like
-                for _ in range(weapon['pellets']):
-                    spread = random.uniform(-weapon['spread'] * 0.01, weapon['spread'] * 0.01)
-                    self.create_bullet(self.player['angle'] + spread, weapon['damage'], weapon['speed'])
-            elif weapon_name == 'bfg':  # BFG-like
-                self.create_bullet(self.player['angle'], weapon['damage'], weapon['speed'], explosion_radius=weapon.get('explosion_radius', 0))
-            else:  # Regular weapon
-                self.create_bullet(self.player['angle'], weapon['damage'], weapon['speed'])
+            # Handle different rod types
+            if 'casts' in rod:  # Spinning rod-like
+                for _ in range(rod['casts']):
+                    spread = random.uniform(-rod['spread'] * 0.01, rod['spread'] * 0.01)
+                    self.create_cast(self.player['angle'] + spread, rod['damage'], rod['speed'])
+            elif rod_name == 'pro_rod':  # Pro rod-like
+                self.create_cast(self.player['angle'], rod['damage'], rod['speed'], explosion_radius=rod.get('explosion_radius', 0))
+            else:  # Regular rod
+                self.create_cast(self.player['angle'], rod['damage'], rod['speed'])
         else:
             # Fallback to old fishing game logic
-            bullet = {
+            cast = {
                 'x': self.player['x'],
                 'y': self.player['y'],
                 'angle': self.player['angle'],
@@ -454,16 +458,16 @@ class Game:
                 'active': True
             }
             
-            # Add bullet to player
-            if 'bullets' not in self.player:
-                self.player['bullets'] = []
+            # Add cast to player
+            if 'casts' not in self.player:
+                self.player['casts'] = []
             
-            self.player['bullets'].append(bullet)
+            self.player['casts'].append(cast)
         
         return True
     
-    def create_bullet(self, angle, damage, speed, explosion_radius=0):
-        bullet = {
+    def create_cast(self, angle, damage, speed, explosion_radius=0):
+        cast = {
             'x': self.player['x'],
             'y': self.player['y'],
             'angle': angle,
@@ -475,10 +479,10 @@ class Game:
             'explosion_radius': explosion_radius
         }
         
-        if 'bullets' not in self.player:
-            self.player['bullets'] = []
+        if 'casts' not in self.player:
+            self.player['casts'] = []
         
-        self.player['bullets'].append(bullet)
+        self.player['casts'].append(cast)
     
     def update(self):
         # Ensure lures is an integer
@@ -490,9 +494,9 @@ class Game:
             # Your logic here
             pass
 
-        # Make sure we have bullet and explosion arrays
-        if 'bullets' not in self.player:
-            self.player['bullets'] = []
+        # Make sure we have cast and explosion arrays
+        if 'casts' not in self.player:
+            self.player['casts'] = []
         
         if 'explosions' not in self.player:
             self.player['explosions'] = []
@@ -515,62 +519,62 @@ class Game:
             if explosion['time'] <= 0:
                 self.player['explosions'].remove(explosion)
         
-        # Process each bullet
-        print(f"Processing {len(self.player['bullets'])} bullets")
-        for bullet in list(self.player['bullets']):  # Use list() to create a copy
-            # Move bullet
-            bullet['x'] += math.cos(bullet['angle']) * bullet['speed']
-            bullet['y'] += math.sin(bullet['angle']) * bullet['speed']
-            bullet['distance'] += bullet['speed']
+        # Process each cast
+        print(f"Processing {len(self.player['casts'])} casts")
+        for cast in list(self.player['casts']):  # Use list() to create a copy
+            # Move cast
+            cast['x'] += math.cos(cast['angle']) * cast['speed']
+            cast['y'] += math.sin(cast['angle']) * cast['speed']
+            cast['distance'] += cast['speed']
             
-            # Check if bullet hit a wall or exceeded max distance
-            if not self.is_valid_position(bullet['x'], bullet['y']) or bullet['distance'] >= bullet['max_distance']:
-                print(f"Bullet hit wall or exceeded max distance at ({bullet['x']}, {bullet['y']})")
-                # Create explosion at wall hit
+            # Check if cast hit a wall or exceeded max distance
+            if not self.is_valid_position(cast['x'], cast['y']) or cast['distance'] >= cast['max_distance']:
+                print(f"Cast hit wall or exceeded max distance at ({cast['x']}, {cast['y']})")
+                # Create splash at wall hit
                 self.player['explosions'].append({
-                    'x': bullet['x'],
-                    'y': bullet['y'],
+                    'x': cast['x'],
+                    'y': cast['y'],
                     'size': 0.3,
                     'time': 5
                 })
-                self.player['bullets'].remove(bullet)
+                self.player['casts'].remove(cast)
                 continue
             
             # Check for fish collisions
             hit = False
             for i, fish in enumerate(list(self.fish)):  # Use list() to create a copy
-                # Calculate distance between bullet and fish
-                dx = fish['x'] - bullet['x']
-                dy = fish['y'] - bullet['y']
+                # Calculate distance between cast and fish
+                dx = fish['x'] - cast['x']
+                dy = fish['y'] - cast['y']
                 dist = math.sqrt(dx*dx + dy*dy)
                 
                 # Very generous hit radius to make hitting fish easier
                 if dist < 2.0:
-                    print(f"BULLET HIT FISH! Distance: {dist}")
-                    print(f"Bullet position: ({bullet['x']}, {bullet['y']})")
+                    print(f"CAST HIT FISH! Distance: {dist}")
+                    print(f"Cast position: ({cast['x']}, {cast['y']})")
                     print(f"Fish position: ({fish['x']}, {fish['y']})")
                     
                     # Apply damage to fish
-                    damage = bullet.get('damage', 1) * self.player['lure_power']
+                    damage = cast.get('damage', 1) * self.player['lure_power']
                     fish['health'] -= damage
                     
                     print(f"Fish hit! Type: {fish['type']}, Health before: {fish['health'] + damage}, after: {fish['health']}")
                     
-                    # Create explosion at hit location
+                    # Create splash at hit location
                     self.player['explosions'].append({
-                        'x': bullet['x'],
-                        'y': bullet['y'],
+                        'x': cast['x'],
+                        'y': cast['y'],
                         'size': 0.5,
                         'time': 10
                     })
                     
-                    # Remove bullet
-                    if bullet in self.player['bullets']:
-                        self.player['bullets'].remove(bullet)
+                    # Remove cast
+                    if cast in self.player['casts']:
+                        self.player['casts'].remove(cast)
                     
                     # Check if fish is dead
                     if fish['health'] <= 0:
-                        print(f"Fish killed! Type: {fish['type']}, Points: {FISH_TYPES[fish['type']]['points']}")
+                        print(f"Fish caught! Type: {fish['type']}, Points: {FISH_TYPES[fish['type']]['points']}")
                         # Add score
                         self.score += FISH_TYPES[fish['type']]['points']
                         
@@ -656,7 +660,20 @@ class Game:
             
             if dist < 0.5:
                 # Fish attacks player
-                self.game_over = True
+                self.player['health'] -= FISH_TYPES[fish['type']]['damage']
+                
+                # Create splash effect for attack
+                self.player['explosions'].append({
+                    'x': self.player['x'],
+                    'y': self.player['y'],
+                    'size': 0.5,
+                    'time': 5,
+                    'color': '#ff0000'  # Red for damage
+                })
+                
+                # Check if player is dead
+                if self.player['health'] <= 0:
+                    self.game_over = True
         
         # Spawn new fish with a delay between spawns
         current_time = time.time()
@@ -750,33 +767,33 @@ class Game:
                 dist = math.sqrt(dx**2 + dy**2)
                 
                 if dist < 1.0:
-                    if pickup['type'] == 'weapon':
-                        # Add weapon to player's inventory
-                        if pickup['weapon'] not in self.player['weapons']:
-                            self.player['weapons'].append(pickup['weapon'])
-                            print(f"Player picked up weapon: {pickup['weapon']}")
+                    if pickup['type'] == 'rod':
+                        # Add rod to player's inventory
+                        if pickup['rod'] not in self.player['rods']:
+                            self.player['rods'].append(pickup['rod'])
+                            print(f"Player picked up rod: {pickup['rod']}")
                             
-                            # Switch to the new weapon
-                            self.player['current_weapon'] = pickup['weapon']
+                            # Switch to the new rod
+                            self.player['current_rod'] = pickup['rod']
                             
-                            # Add some ammo for the weapon
-                            ammo_type = WEAPONS[pickup['weapon']]['ammo_type']
-                            if ammo_type == 'bullets':
-                                self.player['ammo']['bullets'] += 20
-                            elif ammo_type == 'shells':
-                                self.player['ammo']['shells'] += 8
-                            else:  # cells
-                                self.player['ammo']['cells'] += 30
+                            # Add some tackle for the rod
+                            ammo_type = RODS[pickup['rod']]['ammo_type']
+                            if ammo_type == 'flies':
+                                self.player['tackle_box']['flies'] += 20
+                            elif ammo_type == 'spinners':
+                                self.player['tackle_box']['spinners'] += 8
+                            else:  # crankbaits
+                                self.player['tackle_box']['crankbaits'] += 30
                     
-                    elif pickup['type'] == 'ammo':
-                        # Add ammo to player's inventory
-                        self.player['ammo'][pickup['ammo_type']] += pickup['amount']
-                        print(f"Player picked up {pickup['amount']} {pickup['ammo_type']}")
+                    elif pickup['type'] == 'tackle':
+                        # Add tackle to player's inventory
+                        self.player['tackle_box'][pickup['tackle_type']] += pickup['amount']
+                        print(f"Player picked up {pickup['amount']} {pickup['tackle_type']}")
                     
                     # Remove the pickup
                     self.pickups.remove(pickup)
                     
-                    # Create explosion effect
+                    # Create splash effect
                     self.player['explosions'].append({
                         'x': pickup['x'],
                         'y': pickup['y'],
@@ -791,7 +808,8 @@ class Game:
             'fish': self.fish,
             'power_ups': self.power_ups,
             'score': self.score,
-            'game_over': self.game_over
+            'game_over': self.game_over,
+            'pickups': getattr(self, 'pickups', [])
         }
 
     def spawn_power_ups(self, count):
@@ -850,7 +868,7 @@ class Game:
             
             self.player['health'] -= FISH_TYPES[fish['type']]['damage']
             
-            # Create explosion for attack visualization
+            # Create splash for attack visualization
             self.player['explosions'].append({
                 'x': self.player['x'],
                 'y': self.player['y'],
@@ -886,15 +904,15 @@ class Game:
                 'max_distance': 10
             })
 
-    def spawn_weapon_pickup(self):
-        # Determine which weapons the player doesn't have
-        available_weapons = [w for w in WEAPONS.keys() if w not in self.player['weapons']]
+    def spawn_rod_pickup(self):
+        # Determine which rods the player doesn't have
+        available_rods = [r for r in RODS.keys() if r not in self.player['rods']]
         
-        if not available_weapons:
-            return  # Player has all weapons
+        if not available_rods:
+            return  # Player has all rods
         
-        # Choose a random weapon
-        weapon = random.choice(available_weapons)
+        # Choose a random rod
+        rod = random.choice(available_rods)
         
         # Find a valid position
         valid_position = False
@@ -910,8 +928,8 @@ class Game:
         
         # Create the pickup
         pickup = {
-            'type': 'weapon',
-            'weapon': weapon,
+            'type': 'rod',
+            'rod': rod,
             'x': x,
             'y': y,
             'time': 600  # How long the pickup stays
@@ -921,18 +939,18 @@ class Game:
             self.pickups = []
         
         self.pickups.append(pickup)
-        print(f"Spawned weapon pickup: {weapon} at ({x}, {y})")
+        print(f"Spawned rod pickup: {rod} at ({x}, {y})")
 
-    def spawn_ammo_pickup(self):
-        # Choose a random ammo type
-        ammo_type = random.choice(['bullets', 'shells', 'cells'])
+    def spawn_tackle_pickup(self):
+        # Choose a random tackle type
+        tackle_type = random.choice(['flies', 'spinners', 'crankbaits'])
         
         # Determine amount based on type
-        if ammo_type == 'bullets':
+        if tackle_type == 'flies':
             amount = random.randint(5, 20)
-        elif ammo_type == 'shells':
+        elif tackle_type == 'spinners':
             amount = random.randint(2, 8)
-        else:  # cells
+        else:  # crankbaits
             amount = random.randint(10, 30)
         
         # Find a valid position
@@ -949,8 +967,8 @@ class Game:
         
         # Create the pickup
         pickup = {
-            'type': 'ammo',
-            'ammo_type': ammo_type,
+            'type': 'tackle',
+            'tackle_type': tackle_type,
             'amount': amount,
             'x': x,
             'y': y,
@@ -961,7 +979,7 @@ class Game:
             self.pickups = []
         
         self.pickups.append(pickup)
-        print(f"Spawned {amount} {ammo_type} pickup at ({x}, {y})")
+        print(f"Spawned {amount} {tackle_type} pickup at ({x}, {y})")
 
 game = Game()
 
@@ -1132,16 +1150,16 @@ def hit_fish_route():
     state = game.get_state()
     return jsonify(state)
 
-@app.route('/switch-weapon', methods=['POST'])
-def switch_weapon():
+@app.route('/switch-rod', methods=['POST'])
+def switch_rod():
     data = request.get_json()
-    weapon = data.get('weapon')
+    rod = data.get('rod')
     
-    if weapon in WEAPONS and weapon in game.player['weapons']:
-        game.player['current_weapon'] = weapon
-        print(f"Switched to weapon: {weapon}")
+    if rod in RODS and rod in game.player['rods']:
+        game.player['current_rod'] = rod
+        print(f"Switched to rod: {rod}")
     else:
-        print(f"Cannot switch to weapon: {weapon}")
+        print(f"Cannot switch to rod: {rod}")
     
     return jsonify(game.get_state())
 
