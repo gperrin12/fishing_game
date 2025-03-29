@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Doom Fishing</title>
+    <title>Doom II Fishing</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -173,7 +173,7 @@
 <body>
     <div id="score">Score: 0</div>
     <div id="ammo">Health: 100</div>
-    <div id="gameOver">Game Over! The fish have taken over the lake!</div>
+    <div id="gameOver">Game Over! The mutant fish have defeated you!</div>
     
     <div id="gameContainer">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
@@ -194,17 +194,17 @@
 
     <div id="healthBar"><div id="healthFill"></div></div>
     <div id="ammoDisplay">
-        <div class="ammo-type">BULLETS: <span id="bulletAmmo">50</span></div>
-        <div class="ammo-type">SHELLS: <span id="shellAmmo">0</span></div>
-        <div class="ammo-type">CELLS: <span id="cellAmmo">0</span></div>
+        <div class="ammo-type">FLIES: <span id="bulletAmmo">50</span></div>
+        <div class="ammo-type">SPINNERS: <span id="shellAmmo">0</span></div>
+        <div class="ammo-type">CRANKBAITS: <span id="cellAmmo">0</span></div>
     </div>
 
     <div id="weaponSelector">
-        <button class="weapon-btn active" data-weapon="pistol">PISTOL</button>
-        <button class="weapon-btn" data-weapon="shotgun">SHOTGUN</button>
-        <button class="weapon-btn" data-weapon="chaingun">CHAINGUN</button>
-        <button class="weapon-btn" data-weapon="plasma">PLASMA</button>
-        <button class="weapon-btn" data-weapon="bfg">BFG</button>
+        <button class="weapon-btn active" data-weapon="basic">BASIC ROD</button>
+        <button class="weapon-btn" data-weapon="spinning">SPINNING ROD</button>
+        <button class="weapon-btn" data-weapon="baitcaster">BAITCASTER</button>
+        <button class="weapon-btn" data-weapon="trolling">TROLLING ROD</button>
+        <button class="weapon-btn" data-weapon="pro_rod">PRO ROD</button>
     </div>
 
     <audio id="splashSound" src="https://assets.mixkit.co/sfx/preview/mixkit-water-splash-1295.mp3" preload="auto"></audio>
@@ -537,48 +537,48 @@
 
         function drawWeapon() {
             try {
-                debug("Drawing weapon");
-                if (!gameState.player || !gameState.player.current_weapon) {
+                debug("Drawing fishing rod");
+                if (!gameState.player) {
                     return true;
                 }
                 
                 const width = canvas.width;
                 const height = canvas.height;
                 
-                // Get the current weapon
-                const currentWeapon = gameState.player.current_weapon;
+                // Get the current rod
+                const currentRod = gameState.player.current_rod || 'basic';
                 
-                // Define weapon properties
-                const weaponProps = {
-                    pistol: {
+                // Define rod properties
+                const rodProps = {
+                    basic: {
                         width: width * 0.3,
                         height: height * 0.3,
                         color: "#8b8b8b"
                     },
-                    shotgun: {
+                    spinning: {
                         width: width * 0.4,
                         height: height * 0.25,
                         color: "#654321"
                     },
-                    chaingun: {
+                    baitcaster: {
                         width: width * 0.5,
                         height: height * 0.35,
                         color: "#5a5a5a"
                     },
-                    plasma: {
+                    trolling: {
                         width: width * 0.45,
                         height: height * 0.3,
                         color: "#00aaff"
                     },
-                    bfg: {
+                    pro_rod: {
                         width: width * 0.6,
                         height: height * 0.4,
                         color: "#00ff00"
                     }
                 };
                 
-                // Get properties for current weapon
-                const props = weaponProps[currentWeapon] || weaponProps.pistol;
+                // Get properties for current rod
+                const props = rodProps[currentRod] || rodProps.basic;
                 
                 // Calculate bounce effect
                 const bounceY = Math.sin(Date.now() / 150) * 10 * (isMoving ? 1 : 0.2);
@@ -598,9 +598,9 @@
                     props.height
                 );
                 
-                // Draw weapon details
-                if (currentWeapon === 'pistol') {
-                    // Draw pistol barrel
+                // Draw rod details
+                if (currentRod === 'basic') {
+                    // Draw basic rod pole
                     ctx.fillStyle = "#333333";
                     ctx.fillRect(
                         weaponX - props.width / 6,
@@ -608,8 +608,8 @@
                         props.width / 3,
                         props.height / 3
                     );
-                } else if (currentWeapon === 'shotgun') {
-                    // Draw shotgun barrel
+                } else if (currentRod === 'spinning') {
+                    // Draw spinning rod
                     ctx.fillStyle = "#333333";
                     ctx.fillRect(
                         weaponX - props.width / 4,
@@ -617,8 +617,8 @@
                         props.width / 2,
                         props.height / 4
                     );
-                } else if (currentWeapon === 'chaingun') {
-                    // Draw chaingun barrels
+                } else if (currentRod === 'baitcaster') {
+                    // Draw baitcaster rod
                     ctx.fillStyle = "#333333";
                     ctx.fillRect(
                         weaponX - props.width / 3,
@@ -626,8 +626,8 @@
                         props.width / 1.5,
                         props.height / 3
                     );
-                } else if (currentWeapon === 'plasma') {
-                    // Draw plasma gun barrel
+                } else if (currentRod === 'trolling') {
+                    // Draw trolling rod
                     ctx.fillStyle = "#00ffff";
                     ctx.fillRect(
                         weaponX - props.width / 4,
@@ -635,8 +635,8 @@
                         props.width / 2,
                         props.height / 3
                     );
-                } else if (currentWeapon === 'bfg') {
-                    // Draw BFG barrel
+                } else if (currentRod === 'pro_rod') {
+                    // Draw pro rod
                     ctx.fillStyle = "#00ff00";
                     ctx.fillRect(
                         weaponX - props.width / 3,
@@ -1555,43 +1555,43 @@
         }
 
         // Add weapon switching function
-        function switchWeapon(weaponName) {
-            if (!gameState.player.weapons.includes(weaponName)) {
-                console.log(`Don't have weapon: ${weaponName}`);
+        function switchWeapon(rodName) {
+            if (!gameState.player.rods.includes(rodName)) {
+                console.log(`Don't have rod: ${rodName}`);
                 return;
             }
             
-            console.log(`Switching to weapon: ${weaponName}`);
+            console.log(`Switching to rod: ${rodName}`);
             
-            fetch('/switch-weapon', {
+            fetch('/switch-rod', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ weapon: weaponName })
+                body: JSON.stringify({ rod: rodName })
             })
             .then(response => response.json())
             .then(data => {
-                console.log("Weapon switched:", data);
+                console.log("Rod switched:", data);
                 updateGame(data);
                 
-                // Update weapon button UI
+                // Update rod button UI
                 document.querySelectorAll('.weapon-btn').forEach(btn => {
                     btn.classList.remove('active');
-                    if (btn.dataset.weapon === weaponName) {
+                    if (btn.dataset.weapon === rodName) {
                         btn.classList.add('active');
                     }
                 });
             })
             .catch(error => {
-                console.error('Error switching weapon:', error);
+                console.error('Error switching rod:', error);
                 
                 // Update locally if server request fails
-                gameState.player.current_weapon = weaponName;
+                gameState.player.current_rod = rodName;
                 drawGame();
                 
-                // Update weapon button UI
+                // Update rod button UI
                 document.querySelectorAll('.weapon-btn').forEach(btn => {
                     btn.classList.remove('active');
-                    if (btn.dataset.weapon === weaponName) {
+                    if (btn.dataset.weapon === rodName) {
                         btn.classList.add('active');
                     }
                 });
@@ -1605,14 +1605,14 @@
             });
         });
 
-        // Add keyboard shortcuts for weapon switching
+        // Add keyboard shortcuts for rod switching
         document.addEventListener('keydown', function(event) {
-            // Number keys 1-5 for weapon selection
+            // Number keys 1-5 for rod selection
             if (event.key >= '1' && event.key <= '5') {
-                const weapons = ['pistol', 'shotgun', 'chaingun', 'plasma', 'bfg'];
-                const weaponIndex = parseInt(event.key) - 1;
-                if (weaponIndex < weapons.length) {
-                    switchWeapon(weapons[weaponIndex]);
+                const rods = ['basic', 'spinning', 'baitcaster', 'trolling', 'pro_rod'];
+                const rodIndex = parseInt(event.key) - 1;
+                if (rodIndex < rods.length) {
+                    switchWeapon(rods[rodIndex]);
                 }
             }
         });
@@ -1658,8 +1658,8 @@
                         const screenY = height/2 + Math.sin(Date.now() / 300) * 10; // Floating effect
                         
                         // Draw pickup based on type
-                        if (pickup.type === 'weapon') {
-                            ctx.fillStyle = "#00ff00"; // Green for weapons
+                        if (pickup.type === 'rod') {
+                            ctx.fillStyle = "#00ff00"; // Green for rods
                             ctx.beginPath();
                             ctx.arc(screenX, screenY, size/2, 0, Math.PI*2);
                             ctx.fill();
@@ -1668,16 +1668,16 @@
                             ctx.fillStyle = "#ffffff";
                             ctx.font = `${Math.max(12, size/4)}px Arial`;
                             ctx.textAlign = 'center';
-                            ctx.fillText(pickup.weapon.toUpperCase(), screenX, screenY + size/2 + 20);
-                        } else if (pickup.type === 'ammo') {
-                            ctx.fillStyle = "#ffff00"; // Yellow for ammo
+                            ctx.fillText(pickup.rod.toUpperCase(), screenX, screenY + size/2 + 20);
+                        } else if (pickup.type === 'tackle') {
+                            ctx.fillStyle = "#ffff00"; // Yellow for tackle
                             ctx.fillRect(screenX - size/3, screenY - size/3, size/1.5, size/1.5);
                             
                             // Draw label
                             ctx.fillStyle = "#ffffff";
                             ctx.font = `${Math.max(12, size/4)}px Arial`;
                             ctx.textAlign = 'center';
-                            ctx.fillText(pickup.ammo_type.toUpperCase(), screenX, screenY + size/2 + 20);
+                            ctx.fillText(pickup.tackle_type.toUpperCase(), screenX, screenY + size/2 + 20);
                         } else if (pickup.type === 'health') {
                             ctx.fillStyle = "#ff0000"; // Red for health
                             ctx.beginPath();
@@ -1775,6 +1775,35 @@
             window.player = {
                 fov: Math.PI / 3,  // 60 degrees field of view
                 depth: 16          // Maximum render distance
+            };
+        }
+
+        // Define initial game state if needed
+        if (!gameState || !gameState.player) {
+            gameState = {
+                player: {
+                    x: 2,
+                    y: 2,
+                    angle: 0,
+                    health: 100,
+                    armor: 0,
+                    current_rod: 'basic',
+                    rods: ['basic'],
+                    tackle_box: {
+                        flies: 50,
+                        spinners: 0,
+                        crankbaits: 0
+                    },
+                    rod_cooldown: 0,
+                    casts: [],
+                    lures: 10,
+                    lure_power: 1.0,
+                    lure_speed: 1.0,
+                    casting_speed: 1.0
+                },
+                fish: [],
+                score: 0,
+                game_over: false
             };
         }
 
@@ -1884,17 +1913,18 @@
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(gameState.player.health, 100, height - 15);
                 
-                // Draw ammo for current weapon
+                // Draw lures for current rod
                 ctx.fillStyle = '#ffff00';
                 ctx.textAlign = 'right';
                 
-                const currentWeapon = gameState.player.current_weapon || 'pistol';
-                const ammoType = WEAPONS[currentWeapon].ammo_type;
-                const ammoCount = gameState.player.ammo[ammoType];
+                // Safely access rod and lure information with fallbacks
+                const currentRod = (gameState.player && gameState.player.current_rod) || 'basic';
+                const lureType = (window.RODS && RODS[currentRod] && RODS[currentRod].ammo_type) || 'flies';
+                const lureCount = (gameState.player && gameState.player.tackle_box && gameState.player.tackle_box[lureType]) || 0;
                 
-                ctx.fillText("AMMO", width - 80, height - 15);
+                ctx.fillText("LURES", width - 80, height - 15);
                 ctx.fillStyle = '#ffffff';
-                ctx.fillText(ammoCount, width - 10, height - 15);
+                ctx.fillText(lureCount, width - 10, height - 15);
                 
                 // Draw armor if player has any
                 if (gameState.player.armor > 0) {
@@ -1912,52 +1942,52 @@
             }
         }
 
-        // Define WEAPONS if it doesn't exist
-        if (typeof WEAPONS === 'undefined') {
-            debug("Defining WEAPONS variable");
-            window.WEAPONS = {
-                'pistol': {
+        // Define RODS if it doesn't exist
+        if (typeof RODS === 'undefined') {
+            debug("Defining RODS variable");
+            window.RODS = {
+                'basic': {
                     'damage': 1,
                     'speed': 0.3,
                     'cooldown': 20,
-                    'sprite': 'pistol',
-                    'sound': 'pistol',
-                    'ammo_type': 'bullets'
+                    'sprite': 'basic_rod',
+                    'sound': 'cast',
+                    'ammo_type': 'flies'
                 },
-                'shotgun': {
+                'spinning': {
                     'damage': 2,
                     'speed': 0.25,
                     'cooldown': 30,
                     'spread': 3,
-                    'pellets': 7,
-                    'sprite': 'shotgun',
-                    'sound': 'shotgun',
-                    'ammo_type': 'shells'
+                    'casts': 3,
+                    'sprite': 'spinning_rod',
+                    'sound': 'spinning_cast',
+                    'ammo_type': 'spinners'
                 },
-                'chaingun': {
+                'baitcaster': {
                     'damage': 1,
                     'speed': 0.3,
                     'cooldown': 5,
-                    'sprite': 'chaingun',
-                    'sound': 'chaingun',
-                    'ammo_type': 'bullets'
+                    'sprite': 'baitcaster',
+                    'sound': 'baitcaster_cast',
+                    'ammo_type': 'flies'
                 },
-                'plasma': {
+                'trolling': {
                     'damage': 3,
                     'speed': 0.4,
                     'cooldown': 8,
-                    'sprite': 'plasma',
-                    'sound': 'plasma',
-                    'ammo_type': 'cells'
+                    'sprite': 'trolling_rod',
+                    'sound': 'trolling_cast',
+                    'ammo_type': 'crankbaits'
                 },
-                'bfg': {
+                'pro_rod': {
                     'damage': 10,
                     'speed': 0.2,
                     'cooldown': 60,
                     'explosion_radius': 3,
-                    'sprite': 'bfg',
-                    'sound': 'bfg',
-                    'ammo_type': 'cells'
+                    'sprite': 'pro_rod',
+                    'sound': 'pro_cast',
+                    'ammo_type': 'crankbaits'
                 }
             };
         }
